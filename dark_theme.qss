@@ -1,103 +1,197 @@
+/* dark_theme.qss - Cinema 4D Inspired Style */
+
+/* General Styles */
 QWidget {
-    background-color: #2b2b2b; /* 深灰色背景 */
-    color: #dcdcdc; /* 浅灰色文字 */
-    font-family: "Segoe UI", Arial, sans-serif; /* 可选：指定字体 */
-    font-size: 10pt;
+    background-color: #3c3c3c; /* C4D-like dark gray background */
+    color: #dcdcdc; /* Light gray text */
+    font-family: "Segoe UI", Arial, sans-serif; /* Common UI font */
+    font-size: 9pt;
+    border: none; /* Remove borders by default */
 }
 
 QMainWindow {
-    background-color: #2b2b2b;
-}
-
-QToolBar {
-    background-color: #3c3c3c; /* 工具栏稍亮背景 */
-    border: none;
-    padding: 3px;
-    spacing: 5px; /* 图标间距 */
-}
-
-QToolBar QToolButton {
     background-color: #3c3c3c;
-    color: #dcdcdc;
-    padding: 5px;
-    border-radius: 3px;
+}
+
+/* ToolBar */
+QToolBar {
+    background-color: #333333; /* Slightly darker toolbar background */
+    border: none;
+    padding: 3px; /* Padding around the toolbar content */
+    spacing: 4px; /* Spacing between buttons */
+}
+
+/* ToolBar Buttons (QActions displayed as ToolButtons) */
+QToolBar QToolButton {
+    background-color: transparent; /* Make button background transparent */
+    border: 1px solid transparent; /* Transparent border initially */
+    padding: 6px; /* Adjust padding for button size */
+    margin: 0px; /* No extra margin */
+    border-radius: 3px; /* Slight rounding */
+    color: #dcdcdc; /* Icon/Text color */
 }
 
 QToolBar QToolButton:hover {
-    background-color: #555555; /* 悬停效果 */
+    background-color: #555555; /* Lighter gray on hover */
+    border: 1px solid #666666; /* Subtle border on hover */
 }
 
 QToolBar QToolButton:pressed {
-    background-color: #4a4a4a;
+    background-color: #666666; /* Even lighter on press */
+    border: 1px solid #777777;
 }
 
+QToolBar QToolButton:checked { /* Style for checkable actions if any */
+    background-color: #007acc; /* Example accent color (blue) */
+    border: 1px solid #005c9e;
+    color: white; /* White icon/text when checked */
+}
+
+QToolBar QToolButton:disabled {
+    background-color: transparent;
+    color: #777777; /* Dimmed color for disabled icon/text */
+    /* Note: Icon color might need separate handling via qtawesome for disabled state */
+}
+
+/* LineEdit (URL Input) */
 QLineEdit {
-    background-color: #3c3c3c;
-    border: 1px solid #555555;
-    padding: 5px;
+    background-color: #2d2d2d; /* Darker input background */
+    border: 1px solid #555555; /* Standard border */
     border-radius: 3px;
+    padding: 5px 8px; /* Vertical and horizontal padding */
     color: #dcdcdc;
+    font-size: 10pt; /* Slightly larger font for input */
 }
 
 QLineEdit:focus {
-    border: 1px solid #007acc; /* 焦点时边框颜色 */
+    border: 1px solid #007acc; /* Accent color border on focus (e.g., blue) */
+    background-color: #383838; /* Slightly lighter background on focus */
 }
 
+/* TextEdit (Log Output) */
 QTextEdit {
-    background-color: #252525; /* 文本区域更暗背景 */
+    background-color: #2a2a2a; /* Slightly different dark for log */
     border: 1px solid #555555;
-    color: #cccccc; /* 日志文本颜色 */
     border-radius: 3px;
-    font-family: "Consolas", "Courier New", monospace; /* 等宽字体适合日志 */
+    padding: 5px;
+    color: #cccccc; /* Slightly dimmer text for logs */
+    selection-background-color: #007acc; /* Selection color */
+    selection-color: white;
 }
 
-QStatusBar {
-    background-color: #3c3c3c;
-    color: #dcdcdc;
-}
-
-QStatusBar QLabel { /* 确保状态栏内的标签也应用颜色 */
-    color: #dcdcdc;
-    background-color: transparent; /* 避免覆盖背景 */
-}
-
-
+/* ProgressBar */
 QProgressBar {
     border: 1px solid #555555;
     border-radius: 3px;
     text-align: center;
-    background-color: #3c3c3c;
     color: #dcdcdc;
+    background-color: #2d2d2d;
+    height: 18px; /* Slightly taller progress bar */
 }
 
 QProgressBar::chunk {
-    background-color: #007acc; /* 进度条颜色 */
+    background-color: #007acc; /* Accent color for progress chunk (blue) */
+    /* Use #ff8c00 for orange accent */
     border-radius: 2px;
-    margin: 0.5px;
+    margin: 1px; /* Margin inside the progress bar */
 }
 
+/* Label */
+QLabel {
+    color: #dcdcdc;
+    background-color: transparent; /* Ensure labels don't have odd backgrounds */
+    padding: 2px; /* Add slight padding if needed */
+}
+
+/* StatusBar */
+QStatusBar {
+    background-color: #333333;
+    color: #aaaaaa; /* Slightly dimmer status text */
+    border-top: 1px solid #555555; /* Add a subtle top border */
+}
+QStatusBar::item {
+    border: none; /* Remove borders between items */
+    padding: 0 5px; /* Add padding between status bar items */
+}
+
+/* ScrollBar */
+QScrollBar:vertical {
+    border: none; /* Flat scrollbar */
+    background: #2d2d2d; /* Scrollbar track color */
+    width: 10px; /* Width of the scroll bar */
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar::handle:vertical {
+    background: #555555; /* Scrollbar handle color */
+    min-height: 25px; /* Minimum handle height */
+    border-radius: 5px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #666666; /* Handle color on hover */
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px; /* Hide the arrow buttons */
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #2d2d2d;
+    height: 10px;
+    margin: 0px 0px 0px 0px;
+}
+QScrollBar::handle:horizontal {
+    background: #555555;
+    min-width: 25px;
+    border-radius: 5px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: #666666;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+/* MessageBox - Basic styling attempt */
 QMessageBox {
-     background-color: #2b2b2b;
+    background-color: #3c3c3c;
+    border: 1px solid #555555;
 }
 
 QMessageBox QLabel {
     color: #dcdcdc;
     background-color: transparent;
+    font-size: 10pt;
 }
 
-QMessageBox QPushButton {
-    background-color: #3c3c3c;
+QMessageBox QPushButton { /* Style buttons inside message box */
+    background-color: #555555;
+    border: 1px solid #666666;
     color: #dcdcdc;
-    border: 1px solid #555555;
-    padding: 5px 10px;
+    padding: 6px 20px; /* Button padding */
     border-radius: 3px;
-    min-width: 60px;
+    min-width: 70px; /* Minimum button width */
+    margin: 5px;
 }
 
 QMessageBox QPushButton:hover {
-    background-color: #555555;
+    background-color: #666666;
+    border: 1px solid #777777;
 }
 
 QMessageBox QPushButton:pressed {
-    background-color: #4a4a4a;
+    background-color: #777777;
+}
+
+QMessageBox QPushButton:focus {
+    border: 1px solid #007acc; /* Highlight default/focused button */
 }

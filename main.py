@@ -174,13 +174,24 @@ class MainWindow(QMainWindow):
     def setup_toolbar(self):
         """设置工具栏及其动作"""
         toolbar = QToolBar("主工具栏")
-        toolbar.setMovable(False)  # 不允许移动
+        toolbar.setMovable(False)
+        # toolbar.setIconSize(QSize(18, 18)) # 可选: 调整图标大小以匹配 C4D 风格
         self.addToolBar(toolbar)
 
+        # --- 定义颜色 ---
+        icon_color = "#cccccc"       # 默认图标颜色 (浅灰)
+        # C4D 常用橙色或蓝色作为强调色，这里用蓝色示例
+        active_color_accent = "#00aaff" # 悬停/激活时的图标颜色 (亮蓝色)
+        active_color_delete = "#ff6b6b" # 删除/危险操作的激活颜色 (红色)
+        active_color_cancel = "#ffcc00" # 取消操作的激活颜色 (黄色/橙色)
+        disabled_color = "#777777"     # 禁用状态的图标颜色 (通过 QSS 设置可能更一致)
+
         # --- 下载动作 ---
-        # 使用 qtawesome 获取图标
+        # 注意: color_active 会在悬停或按下时改变图标颜色，与 QSS 的 :hover/:pressed 效果叠加
         download_icon = qta.icon(
-            "fa5s.download", color="#dcdcdc", color_active="#007acc"
+            "fa5s.download",
+            color=icon_color,
+            color_active=active_color_accent
         )
         self.download_action = QAction(download_icon, "下载", self)
         self.download_action.setStatusTip("开始下载输入的 URL")
@@ -188,7 +199,11 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.download_action)
 
         # --- 清除日志动作 ---
-        clear_icon = qta.icon("fa5s.trash-alt", color="#dcdcdc", color_active="#cc0000")
+        clear_icon = qta.icon(
+            "fa5s.trash-alt",
+            color=icon_color,
+            color_active=active_color_delete
+        )
         clear_action = QAction(clear_icon, "清除日志", self)
         clear_action.setStatusTip("清除下方的日志输出")
         clear_action.triggered.connect(self.clear_log)
@@ -196,12 +211,14 @@ class MainWindow(QMainWindow):
 
         # --- (可选) 取消动作 ---
         cancel_icon = qta.icon(
-            "fa5s.times-circle", color="#dcdcdc", color_active="#cc0000"
+            "fa5s.times-circle",
+            color=icon_color,
+            color_active=active_color_cancel
         )
         self.cancel_action = QAction(cancel_icon, "取消下载", self)
         self.cancel_action.setStatusTip("尝试取消当前下载")
         self.cancel_action.triggered.connect(self.cancel_download)
-        self.cancel_action.setEnabled(False)  # 初始禁用
+        self.cancel_action.setEnabled(False)
         toolbar.addAction(self.cancel_action)
 
     def apply_dark_theme(self):
