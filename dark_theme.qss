@@ -77,6 +77,7 @@ QTextEdit {
     color: #cccccc; /* Slightly dimmer text for logs */
     selection-background-color: #007acc; /* Selection color */
     selection-color: white;
+    font-size: 12pt;
 }
 
 /* ProgressBar */
@@ -102,6 +103,10 @@ QLabel {
     background-color: transparent; /* Ensure labels don't have odd backgrounds */
     padding: 2px; /* Add slight padding if needed */
     font-size: 14pt;
+}
+
+QPushButton {
+    font-size: 12pt;
 }
 
 /* StatusBar */

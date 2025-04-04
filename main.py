@@ -13,8 +13,10 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QLabel,
     QMessageBox,
+    QPushButton,
+    QFileDialog,
 )
-from PySide6.QtCore import QThread, Slot, QSize
+from PySide6.QtCore import QThread, Slot, QSize, QStandardPaths  # 新增：导入 QStandardPaths
 from PySide6.QtGui import QAction
 from worker import DownloadWorker
 
@@ -43,6 +45,10 @@ class MainWindow(QMainWindow):
         self.current_thread = None
         self.current_worker = None
 
+        # --- 新增：获取默认下载路径 ---
+        self.selected_download_path = self.get_default_download_path()
+        # ---------------------------
+
         self.setup_ui()
         self.apply_dark_theme()  # 应用深色主题
         self.setup_toolbar()
@@ -57,12 +63,24 @@ class MainWindow(QMainWindow):
         self.statusBar().addPermanentWidget(self.progress_bar)
         self.progress_bar.hide()  # 初始隐藏
 
+    def get_default_download_path(self):
+        """获取默认的下载目录 (通常是用户的 'Downloads' 文件夹)"""
+        path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
+        if not path or not os.path.exists(path):
+            # 如果获取失败或目录不存在，则使用用户主目录
+            path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.HomeLocation)
+        if not path:
+            # 如果连主目录都获取失败，则使用当前工作目录
+            path = "."
+        return path
+
     def setup_ui(self):
         """设置用户界面布局和控件"""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
+        # --- URL 输入 ---
         input_layout = QHBoxLayout()
         self.url_label = QLabel("视频 URL:")
         self.url_input = QLineEdit()
@@ -70,6 +88,7 @@ class MainWindow(QMainWindow):
         input_layout.addWidget(self.url_label)
         input_layout.addWidget(self.url_input)
 
+        # --- 代理输入 ---
         proxy_layout = QHBoxLayout()
         self.proxy_label = QLabel("HTTP 代理:")
         self.proxy_input = QLineEdit()
@@ -79,12 +98,25 @@ class MainWindow(QMainWindow):
         proxy_layout.addWidget(self.proxy_label)
         proxy_layout.addWidget(self.proxy_input)
 
+        download_dir_layout = QHBoxLayout()
+        self.download_dir_label = QLabel("保存目录:")
+        self.download_directory_input = QLineEdit(self.selected_download_path)
+        self.download_directory_input.setReadOnly(True)
+        self.select_dir_button = QPushButton("浏览...")
+        self.select_dir_button.setToolTip("选择视频保存的文件夹")
+        self.select_dir_button.clicked.connect(self.select_download_directory)
+
+        download_dir_layout.addWidget(self.download_dir_label)
+        download_dir_layout.addWidget(self.download_directory_input)
+        download_dir_layout.addWidget(self.select_dir_button)
+
         # 日志/输出区域
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
 
         main_layout.addLayout(input_layout)
-        main_layout.addLayout(proxy_layout)  # 将代理布局添加到主布局
+        main_layout.addLayout(proxy_layout)
+        main_layout.addLayout(download_dir_layout)
         main_layout.addWidget(self.log_output)
 
     def setup_toolbar(self):
@@ -134,6 +166,24 @@ class MainWindow(QMainWindow):
             print("未能加载暗色主题样式。")
 
     @Slot()
+    def select_download_directory(self):
+        """打开目录选择对话框并更新路径"""
+        # 使用上次选择的目录或默认目录作为起始点
+        start_dir = self.selected_download_path if os.path.isdir(self.selected_download_path) else self.get_default_download_path()
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "选择保存目录",
+            start_dir,
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks,
+            )
+        if directory: # 如果用户选择了目录 (没有取消)
+            # 规范化路径表示 (例如，将 / 转换为 \ 在 Windows 上)
+            normalized_path = os.path.normpath(directory)
+            self.selected_download_path = normalized_path
+            self.download_directory_input.setText(normalized_path)
+            self.append_log(f"设置保存目录为: {normalized_path}")
+
+    @Slot()
     def start_download(self):
         """开始下载过程"""
         if self.current_thread is not None and self.current_thread.isRunning():
@@ -147,43 +197,38 @@ class MainWindow(QMainWindow):
 
         # --- 获取代理地址 ---
         proxy_address = self.proxy_input.text().strip()
-        # 可以添加一些基本的验证，但 yt-dlp 会处理无效的代理字符串
         if proxy_address and not (
-            proxy_address.startswith("http://")
-            or proxy_address.startswith("https://")
-            or proxy_address.startswith("socks")
+                proxy_address.startswith("http://")
+                or proxy_address.startswith("https://")
+                or proxy_address.startswith("socks")
         ):
-            # 简单的提示，非强制
             self.append_log(
                 f"警告: 代理地址 '{proxy_address}' 格式可能不正确，请确保其以 http://, https:// 或 socks5:// 等开头。"
             )
 
-        download_path = "."  # 可以考虑让用户选择下载路径
+        download_path = self.download_directory_input.text().strip()
+        if not download_path or not os.path.isdir(download_path):
+            QMessageBox.warning(self, "错误", f"无效的保存目录: {download_path}\n请通过 '浏览...' 按钮选择一个有效的文件夹。")
+            return # 或者直接返回，让用户重新选择
 
         self.status_label.setText("准备下载...")
         self.progress_bar.setValue(0)
-        self.progress_bar.setFormat("%p%")  # 重置格式
-        self.progress_bar.setMaximum(100)  # 重置最大值
+        self.progress_bar.setFormat("%p%")
+        self.progress_bar.setMaximum(100)
         self.progress_bar.show()
-        self.download_action.setEnabled(False)  # 禁用下载按钮
-        self.cancel_action.setEnabled(True)  # 启用取消按钮
+        self.download_action.setEnabled(False)
+        self.cancel_action.setEnabled(True)
 
-        # 创建线程和工作对象，传入代理地址
         self.current_thread = QThread(self)
-        # 将 proxy_address 传递给 DownloadWorker
         self.current_worker = DownloadWorker(url, download_path, proxy=proxy_address)
         self.current_worker.moveToThread(self.current_thread)
 
-        # 连接信号槽
         self.current_worker.progress.connect(self.update_progress)
         self.current_worker.finished.connect(self.download_finished)
         self.current_worker.log_message.connect(self.append_log)
-        # 当线程结束时，执行清理操作
         self.current_thread.finished.connect(self.thread_cleanup)
-        # 当线程启动时，执行 worker 的 run 方法
         self.current_thread.started.connect(self.current_worker.run)
 
-        # 启动线程
         self.current_thread.start()
 
     @Slot(dict)
@@ -192,121 +237,98 @@ class MainWindow(QMainWindow):
         try:
             status = progress_data.get("status")
             if status == "downloading":
-                # 尝试获取更可靠的文件名
                 filename = os.path.basename(
                     progress_data.get("info_dict", {}).get("filename")
                     or progress_data.get("filename")
                     or "未知文件"
                 )
-
                 total_bytes_str = progress_data.get(
                     "total_bytes_estimate"
                 ) or progress_data.get("total_bytes")
                 downloaded_bytes_str = progress_data.get("downloaded_bytes")
-                speed_str = progress_data.get(
-                    "speed_str", "N/A"
-                ).strip()  # yt-dlp 可能输出带空格的速度
+                speed_str = progress_data.get("speed_str", "N/A").strip()
                 eta_str = progress_data.get("eta_str", "N/A").strip()
 
                 if total_bytes_str is not None and downloaded_bytes_str is not None:
                     total_bytes = float(total_bytes_str)
                     downloaded_bytes = float(downloaded_bytes_str)
-
                     if total_bytes > 0:
                         percentage = int((downloaded_bytes / total_bytes) * 100)
                         self.progress_bar.setValue(percentage)
                         self.progress_bar.setFormat("%p%")
-                        self.progress_bar.setMaximum(100)  # 确保是百分比模式
+                        self.progress_bar.setMaximum(100)
                         self.status_label.setText(
                             f"下载中: {filename} ({percentage}%) | {speed_str} | 剩余: {eta_str}"
                         )
                     else:
-                        # 处理总大小未知的情况 (例如直播或某些格式)
                         downloaded_mbytes = downloaded_bytes / (1024 * 1024)
-                        self.progress_bar.setFormat(
-                            "%.2f MiB" % downloaded_mbytes
-                        )  # 显示已下载 MB
-                        self.progress_bar.setValue(0)  # 不确定进度时值设为0
-                        self.progress_bar.setMaximum(0)  # 设置为不定模式
+                        self.progress_bar.setFormat("%.2f MiB" % downloaded_mbytes)
+                        self.progress_bar.setValue(0)
+                        self.progress_bar.setMaximum(0)
                         self.status_label.setText(
                             f"下载中: {filename} ({progress_data.get('downloaded_bytes_str', '? B').strip()}) | {speed_str}"
                         )
                 else:
-                    # 缺少进度信息时显示基本状态
                     self.status_label.setText(
                         f"下载中: {filename} | {speed_str} | 剩余: {eta_str}"
                     )
                     self.progress_bar.setFormat("处理中...")
-                    self.progress_bar.setMaximum(0)  # 不定进度
+                    self.progress_bar.setMaximum(0)
                     self.progress_bar.setValue(0)
 
             elif status == "finished":
-                # 这个 finished 状态可能只是某个步骤完成，不一定是整个下载
-                # 最终状态由 finished 信号处理
                 filename = os.path.basename(progress_data.get("filename") or "未知文件")
                 self.status_label.setText(f"处理完成: {filename}")
-                # 可以在这里将进度条设为 100%，但最终状态在 download_finished 中确认
                 self.progress_bar.setValue(100)
                 self.progress_bar.setFormat("%p%")
                 self.progress_bar.setMaximum(100)
 
         except Exception as e:
             self.append_log(f"处理进度信息时出错: {e}")
-            # print(f"原始进度数据: {progress_data}") # 调试用
 
     @Slot(bool, str)
     def download_finished(self, success, message):
-
         if success:
             self.status_label.setText("下载成功完成")
             self.progress_bar.setValue(100)
             self.progress_bar.setFormat("完成")
-            self.progress_bar.setMaximum(100)  # 确保不是不定模式
-            # QMessageBox.information(self, "成功", f"下载任务完成。\n{message}") # 可以简化提示
-            self.append_log(f"成功: {message}")  # 将成功消息记录到日志
+            self.progress_bar.setMaximum(100)
+            self.append_log(f"成功: {message}")
         else:
-            # 检查是否是用户取消
             if "取消" in message:
                 self.status_label.setText("下载已取消")
                 self.progress_bar.setFormat("已取消")
-                # 取消时进度条可以保持原样或归零
-                # self.progress_bar.setValue(0)
-                self.append_log(f"信息: {message}")  # 记录取消信息
-                # QMessageBox.warning(self, "已取消", message) # 取消时可以不弹窗
+                self.append_log(f"信息: {message}")
             else:
                 self.status_label.setText(f"下载失败")
-                self.progress_bar.setValue(0)  # 失败时归零
+                self.progress_bar.setValue(0)
                 self.progress_bar.setFormat("失败")
-                self.progress_bar.setMaximum(100)  # 确保不是不定模式
+                self.progress_bar.setMaximum(100)
                 QMessageBox.critical(self, "失败", f"下载失败。\n原因: {message}")
-                self.append_log(f"失败: {message}")  # 记录失败信息
+                self.append_log(f"失败: {message}")
 
-        # 重新启用/禁用按钮
         self.download_action.setEnabled(True)
-        self.cancel_action.setEnabled(False)  # 任务结束后禁用取消按钮
+        self.cancel_action.setEnabled(False)
 
         if self.current_thread and self.current_thread.isRunning():
-            self.current_thread.quit()  # 请求退出事件循环
+            self.current_thread.quit()
 
     @Slot()
     def thread_cleanup(self):
         """线程结束后清理资源"""
-        # 这个槽函数会在 QThread 的 finished 信号发出后被调用
         self.append_log("下载线程已结束。")
-        # 确保 worker 对象被删除或不再被引用，以便垃圾回收
         if self.current_worker:
-            self.current_worker.deleteLater()  # 请求稍后删除 worker 对象
+            self.current_worker.deleteLater()
             self.current_worker = None
-        self.current_thread = None  # 清除对线程对象的引用
+        self.current_thread = None
 
-        if not self.cancel_action.isEnabled():  # 只有当任务正常结束或失败时才重置
+        if not self.cancel_action.isEnabled():
             self.download_action.setEnabled(True)
 
     @Slot(str)
     def append_log(self, message):
         """向日志区域追加消息"""
         self.log_output.append(message)
-        # 自动滚动到底部
         scrollbar = self.log_output.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
@@ -319,15 +341,14 @@ class MainWindow(QMainWindow):
     def cancel_download(self):
         """尝试取消当前下载"""
         if (
-            self.current_worker
-            and self.current_thread
-            and self.current_thread.isRunning()
+                self.current_worker
+                and self.current_thread
+                and self.current_thread.isRunning()
         ):
             self.status_label.setText("正在尝试取消...")
             self.append_log("发送取消请求...")
             self.current_worker.cancel()
             self.cancel_action.setEnabled(False)
-            # 注意：这不保证能立即停止 yt-dlp 的网络操作。
         else:
             self.append_log("没有正在运行的下载任务可以取消。")
 
@@ -340,30 +361,25 @@ class MainWindow(QMainWindow):
                 "当前有下载任务正在进行中，确定要退出吗？\n（将尝试取消下载）",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
-            )
-
+                )
             if reply == QMessageBox.StandardButton.Yes:
                 self.append_log("用户请求退出，尝试取消下载...")
-                self.cancel_download()  # 尝试取消
-
+                self.cancel_download()
                 if self.current_thread:
-                    self.current_thread.quit()  # 请求线程事件循环退出
-                    # 短暂等待，但不强制，避免卡死 UI
+                    self.current_thread.quit()
                     if not self.current_thread.wait(500):
                         self.append_log(
                             "警告：下载线程未能及时停止，可能在后台继续运行直到完成或出错。"
                         )
-
-                event.accept()  # 接受关闭事件
+                event.accept()
             else:
-                event.ignore()  # 忽略关闭事件，窗口不关闭
+                event.ignore()
         else:
-            event.accept()  # 没有任务运行，直接接受关闭事件
+            event.accept()
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
