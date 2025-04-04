@@ -16,7 +16,12 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFileDialog,
 )
-from PySide6.QtCore import QThread, Slot, QSize, QStandardPaths  # 新增：导入 QStandardPaths
+from PySide6.QtCore import (
+    QThread,
+    Slot,
+    QSize,
+    QStandardPaths,
+)
 from PySide6.QtGui import QAction
 from worker import DownloadWorker
 
@@ -45,9 +50,7 @@ class MainWindow(QMainWindow):
         self.current_thread = None
         self.current_worker = None
 
-        # --- 新增：获取默认下载路径 ---
         self.selected_download_path = self.get_default_download_path()
-        # ---------------------------
 
         self.setup_ui()
         self.apply_dark_theme()  # 应用深色主题
@@ -65,10 +68,14 @@ class MainWindow(QMainWindow):
 
     def get_default_download_path(self):
         """获取默认的下载目录 (通常是用户的 'Downloads' 文件夹)"""
-        path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
+        path = QStandardPaths.writableLocation(
+            QStandardPaths.StandardLocation.DownloadLocation
+        )
         if not path or not os.path.exists(path):
             # 如果获取失败或目录不存在，则使用用户主目录
-            path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.HomeLocation)
+            path = QStandardPaths.writableLocation(
+                QStandardPaths.StandardLocation.HomeLocation
+            )
         if not path:
             # 如果连主目录都获取失败，则使用当前工作目录
             path = "."
@@ -169,14 +176,18 @@ class MainWindow(QMainWindow):
     def select_download_directory(self):
         """打开目录选择对话框并更新路径"""
         # 使用上次选择的目录或默认目录作为起始点
-        start_dir = self.selected_download_path if os.path.isdir(self.selected_download_path) else self.get_default_download_path()
+        start_dir = (
+            self.selected_download_path
+            if os.path.isdir(self.selected_download_path)
+            else self.get_default_download_path()
+        )
         directory = QFileDialog.getExistingDirectory(
             self,
             "选择保存目录",
             start_dir,
             QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks,
-            )
-        if directory: # 如果用户选择了目录 (没有取消)
+        )
+        if directory:  # 如果用户选择了目录 (没有取消)
             # 规范化路径表示 (例如，将 / 转换为 \ 在 Windows 上)
             normalized_path = os.path.normpath(directory)
             self.selected_download_path = normalized_path
@@ -198,9 +209,9 @@ class MainWindow(QMainWindow):
         # --- 获取代理地址 ---
         proxy_address = self.proxy_input.text().strip()
         if proxy_address and not (
-                proxy_address.startswith("http://")
-                or proxy_address.startswith("https://")
-                or proxy_address.startswith("socks")
+            proxy_address.startswith("http://")
+            or proxy_address.startswith("https://")
+            or proxy_address.startswith("socks")
         ):
             self.append_log(
                 f"警告: 代理地址 '{proxy_address}' 格式可能不正确，请确保其以 http://, https:// 或 socks5:// 等开头。"
@@ -208,8 +219,12 @@ class MainWindow(QMainWindow):
 
         download_path = self.download_directory_input.text().strip()
         if not download_path or not os.path.isdir(download_path):
-            QMessageBox.warning(self, "错误", f"无效的保存目录: {download_path}\n请通过 '浏览...' 按钮选择一个有效的文件夹。")
-            return # 或者直接返回，让用户重新选择
+            QMessageBox.warning(
+                self,
+                "错误",
+                f"无效的保存目录: {download_path}\n请通过 '浏览...' 按钮选择一个有效的文件夹。",
+            )
+            return  # 或者直接返回，让用户重新选择
 
         self.status_label.setText("准备下载...")
         self.progress_bar.setValue(0)
@@ -341,9 +356,9 @@ class MainWindow(QMainWindow):
     def cancel_download(self):
         """尝试取消当前下载"""
         if (
-                self.current_worker
-                and self.current_thread
-                and self.current_thread.isRunning()
+            self.current_worker
+            and self.current_thread
+            and self.current_thread.isRunning()
         ):
             self.status_label.setText("正在尝试取消...")
             self.append_log("发送取消请求...")
@@ -361,7 +376,7 @@ class MainWindow(QMainWindow):
                 "当前有下载任务正在进行中，确定要退出吗？\n（将尝试取消下载）",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
-                )
+            )
             if reply == QMessageBox.StandardButton.Yes:
                 self.append_log("用户请求退出，尝试取消下载...")
                 self.cancel_download()
