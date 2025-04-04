@@ -101,6 +101,7 @@ QLabel {
     color: #dcdcdc;
     background-color: transparent; /* Ensure labels don't have odd backgrounds */
     padding: 2px; /* Add slight padding if needed */
+    font-size: 14pt;
 }
 
 /* StatusBar */
