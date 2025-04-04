@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
 )
-from PySide6.QtCore import QThread, Signal, QObject, Slot
+from PySide6.QtCore import QThread, Signal, QObject, Slot, QSize
 from PySide6.QtGui import QAction
 import yt_dlp
 
@@ -175,19 +175,15 @@ class MainWindow(QMainWindow):
         """设置工具栏及其动作"""
         toolbar = QToolBar("主工具栏")
         toolbar.setMovable(False)
-        # toolbar.setIconSize(QSize(18, 18)) # 可选: 调整图标大小以匹配 C4D 风格
+        toolbar.setIconSize(QSize(24, 24))
         self.addToolBar(toolbar)
 
-        # --- 定义颜色 ---
-        icon_color = "#cccccc"       # 默认图标颜色 (浅灰)
-        # C4D 常用橙色或蓝色作为强调色，这里用蓝色示例
-        active_color_accent = "#00aaff" # 悬停/激活时的图标颜色 (亮蓝色)
-        active_color_delete = "#ff6b6b" # 删除/危险操作的激活颜色 (红色)
-        active_color_cancel = "#ffcc00" # 取消操作的激活颜色 (黄色/橙色)
-        disabled_color = "#777777"     # 禁用状态的图标颜色 (通过 QSS 设置可能更一致)
+        icon_color = "#cccccc"
+        active_color_accent = "#00aaff"
+        active_color_delete = "#ff6b6b"
+        active_color_cancel = "#ffcc00"
+        disabled_color = "#777777"
 
-        # --- 下载动作 ---
-        # 注意: color_active 会在悬停或按下时改变图标颜色，与 QSS 的 :hover/:pressed 效果叠加
         download_icon = qta.icon(
             "fa5s.download",
             color=icon_color,
