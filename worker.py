@@ -5,6 +5,7 @@ from typing import Any
 
 from PySide6.QtCore import Signal, QObject, Slot
 import yt_dlp
+from yt_dlp.utils import DownloadCancelled, DownloadError
 
 from config import DEFAULT_FORMAT, OUTPUT_TEMPLATE, NO_PLAYLIST, NO_PROGRESS
 
@@ -47,7 +48,7 @@ class DownloadWorker(QObject):
         # 检查取消标志 - 通过抛出异常强制中断 yt-dlp
         if self._is_cancelled:
             self.log_message.emit("正在中断下载...")
-            raise yt_dlp.utils.DownloadCancelled("用户取消下载")
+            raise DownloadCancelled("用户取消下载")
 
         if d["status"] == "downloading":
             self.progress.emit(d)
@@ -71,13 +72,21 @@ class DownloadWorker(QObject):
             return
 
         # 使用配置文件中的常量
-        options: dict[str, Any] = {
+        options: Any = {
             "format": self.format_preset,
             "outtmpl": os.path.join(self.download_path, OUTPUT_TEMPLATE),
             "progress_hooks": [self._progress_hook],
             "noplaylist": NO_PLAYLIST,
             "logger": self.YtdlpLogger(self.log_message),
             "noprogress": NO_PROGRESS,
+            "merge_output_format": "mp4",  # 强制合并为 mp4 格式，确保兼容性
+            "allow_unplayable_formats": False,
+            "extract_flat": False,
+            "remote_components": ["ejs:github"],  # 启用远程组件以解决 JS challenge (n-sig)
+            "nocheckcertificate": True,  # 禁用 SSL 证书验证，解决部分环境下的 SSL 错误
+            "socket_timeout": 30,  # 设置超时时间，防止连接僵死
+            "retries": 10,  # 增加重试次数
+            "fragment_retries": 10,
         }
 
         # 添加代理设置
@@ -120,13 +129,13 @@ class DownloadWorker(QObject):
                         final_message = "下载任务完成"
 
                     # 捕捉用户取消异常
-                    except yt_dlp.utils.DownloadCancelled:
+                    except DownloadCancelled:
                         self.log_message.emit("下载已被用户取消")
                         final_message = "下载被用户取消"
                         download_success = False
 
                     # 捕捉 DownloadError
-                    except yt_dlp.utils.DownloadError as e:
+                    except DownloadError as e:
                         if self._is_cancelled:
                             self.log_message.emit("下载因取消操作而中断")
                             final_message = "下载被用户取消"
