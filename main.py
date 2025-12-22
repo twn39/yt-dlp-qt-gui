@@ -296,12 +296,33 @@ class MainWindow(QMainWindow):
             self.download_directory_input.setText(normalized_path)
             self._append_log(f"设置保存目录为: {normalized_path}")
 
+    def _cleanup_previous_download(self) -> None:
+        """清理上一次下载的资源"""
+        if self.current_worker:
+            try:
+                self.current_worker.progress.disconnect()
+                self.current_worker.finished.disconnect()
+                self.current_worker.log_message.disconnect()
+            except RuntimeError:
+                pass  # 信号可能已经断开
+            self.current_worker.deleteLater()
+            self.current_worker = None
+
+        if self.current_thread:
+            if self.current_thread.isRunning():
+                self.current_thread.quit()
+                self.current_thread.wait(100)  # 等待线程结束
+            self.current_thread = None
+
     @Slot()
     def _start_download(self) -> None:
         """开始下载过程"""
         if self.current_thread is not None and self.current_thread.isRunning():
             QMessageBox.warning(self, "提示", "当前已有下载任务在进行中。")
             return
+
+        # 确保上次下载的资源已清理
+        self._cleanup_previous_download()
 
         url = self.url_input.text().strip()
         if not url:
@@ -451,7 +472,14 @@ class MainWindow(QMainWindow):
     def _thread_cleanup(self) -> None:
         """线程结束后清理资源"""
         self._append_log("下载线程已结束。")
+        # 断开信号连接防止残留信号影响新下载
         if self.current_worker:
+            try:
+                self.current_worker.progress.disconnect()
+                self.current_worker.finished.disconnect()
+                self.current_worker.log_message.disconnect()
+            except RuntimeError:
+                pass
             self.current_worker.deleteLater()
             self.current_worker = None
         self.current_thread = None

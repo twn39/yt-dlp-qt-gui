@@ -44,13 +44,14 @@ class DownloadWorker(QObject):
 
     def _progress_hook(self, d: dict[str, Any]) -> None:
         """yt-dlp 进度钩子函数"""
-        if self._is_cancelled:  # 如果已取消，则忽略后续钩子调用
-            return
+        # 检查取消标志 - 通过抛出异常强制中断 yt-dlp
+        if self._is_cancelled:
+            self.log_message.emit("正在中断下载...")
+            raise yt_dlp.utils.DownloadCancelled("用户取消下载")
 
         if d["status"] == "downloading":
             self.progress.emit(d)
         elif d["status"] == "finished":
-            # 检查是否是真正的文件下载完成，而不是后处理步骤
             if "filename" in d:
                 self.log_message.emit(
                     f"文件下载完成: {os.path.basename(d.get('filename', '未知文件'))}"
@@ -105,42 +106,35 @@ class DownloadWorker(QObject):
                     if self._is_cancelled:
                         self.log_message.emit("下载在开始前被取消")
                         final_message = "下载被用户取消"
-                        # finished 信号将在 finally 块中发送
-                        return  # 直接退出 run 方法
+                        return
 
-                    # 这里需要处理可能的下载错误
                     try:
-                        # download=True 会执行下载
                         info_dict = ydl.extract_info(self.url, download=True)
 
-                        # 如果下载过程被取消 (通过 _is_cancelled 标志)
                         if self._is_cancelled:
                             self.log_message.emit("下载过程中被取消")
                             final_message = "下载被用户取消"
-                            # finished 信号将在 finally 块中发送
                             return
 
-                        # 如果没有被取消且没有抛出异常，认为下载（或提交给yt-dlp）成功
-                        # 注意：yt-dlp 内部的完成状态由 progress_hook 处理
                         download_success = True
-                        # 尝试获取最终的文件名，但这可能在合并前不可用
-                        # filename = ydl.prepare_filename(info_dict) if info_dict else "未知文件"
-                        final_message = (
-                            f"下载任务完成 (最终状态请查看日志)"  # 消息可以更具体
-                        )
+                        final_message = "下载任务完成"
 
-                    # 特别捕捉 DownloadError
+                    # 捕捉用户取消异常
+                    except yt_dlp.utils.DownloadCancelled:
+                        self.log_message.emit("下载已被用户取消")
+                        final_message = "下载被用户取消"
+                        download_success = False
+
+                    # 捕捉 DownloadError
                     except yt_dlp.utils.DownloadError as e:
-                        # 检查是否是因为取消操作导致的错误（虽然不完美）
                         if self._is_cancelled:
-                            self.log_message.emit(
-                                f"下载因取消操作而中断 (可能伴随错误: {e})"
-                            )
+                            self.log_message.emit("下载因取消操作而中断")
                             final_message = "下载被用户取消"
                         else:
                             self.log_message.emit(f"yt-dlp 下载错误: {e}")
                             final_message = f"下载失败: {e}"
-                        download_success = False  # 明确标记失败
+                        download_success = False
+
                     # 捕捉其他可能的 yt-dlp 或网络相关的异常
                     except Exception as e:
                         if self._is_cancelled:
