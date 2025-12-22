@@ -82,6 +82,7 @@ class MainWindow(QMainWindow):
 
         self.current_thread: QThread | None = None
         self.current_worker: DownloadWorker | None = None
+        self._last_progress: int = 0  # 跟踪最大进度，防止进度条跳动
 
         self.selected_download_path = self._get_default_download_path()
 
@@ -360,6 +361,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setFormat("%p%")
         self.progress_bar.setMaximum(100)
         self.progress_bar.show()
+        self._last_progress = 0  # 重置进度跟踪
         self.download_action.setEnabled(False)
         self.cancel_action.setEnabled(True)
 
@@ -408,11 +410,14 @@ class MainWindow(QMainWindow):
                     downloaded_bytes = float(downloaded_bytes_str)
                     if total_bytes > 0:
                         percentage = int((downloaded_bytes / total_bytes) * 100)
-                        self.progress_bar.setValue(percentage)
+                        # 确保进度只增不减（防止续传时跳动）
+                        if percentage >= self._last_progress:
+                            self._last_progress = percentage
+                            self.progress_bar.setValue(percentage)
                         self.progress_bar.setFormat("%p%")
                         self.progress_bar.setMaximum(100)
                         self.status_label.setText(
-                            f"下载中: {filename[:30]}... ({percentage}%) | {speed_str} | 剩余: {eta_str}"
+                            f"下载中: {filename[:30]}... ({self._last_progress}%) | {speed_str} | 剩余: {eta_str}"
                         )
                     else:
                         downloaded_mbytes = downloaded_bytes / (1024 * 1024)
