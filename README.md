@@ -73,7 +73,7 @@
 
 1.  **克隆仓库**
     ```bash
-    git clone https://github.com/your-username/yt-dlp-gui.git
+    git clone https://github.com/twn39/yt-dlp-gui.git
     cd yt-dlp-gui
     ```
 
@@ -198,7 +198,7 @@ A: 本项目基于 `yt-dlp`，支持数千个视频网站，包括但不限于�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/yt-dlp-gui.git
+git clone https://github.com/twn39/yt-dlp-gui.git
 cd yt-dlp-gui
 
 # 使用 uv 安装依赖（推荐）
@@ -206,24 +206,6 @@ uv sync
 
 # 运行程序
 uv run yt-dlp-gui
-```
-
-### 项目结构
-
-```
-yt-dlp-gui/
-├── pyproject.toml          # 项目配置文件
-├── README.md
-├── build.py                # 打包脚本
-├── yt-dlp-gui.spec         # PyInstaller 配置
-├── dark_theme.qss          # 样式文件
-└── src/
-    └── yt_dlp_gui/
-        ├── __init__.py     # 包初始化和 CLI 入口点
-        ├── __main__.py     # 模块入口点
-        ├── main.py         # GUI 主窗口
-        ├── config.py       # 配置常量
-        └── worker.py       # 下载工作线程
 ```
 
 ---
@@ -254,12 +236,3 @@ yt-dlp-gui/
 -   提交 [Issue](https://github.com/your-username/yt-dlp-gui/issues)
 -   发起 [Pull Request](https://github.com/your-username/yt-dlp-gui/pulls)
 
----
-
-<div align="center">
-
-**如果这个项目对你有帮助，请给一个 ⭐️ Star！**
-
-Made with ❤️ by [Your Name]
-
-</div>
