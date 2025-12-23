@@ -47,11 +47,21 @@ from .config import (
 def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
     """加载 QSS 样式文件"""
     # 尝试多个可能的路径
-    possible_paths = [
-        filename,  # 相对于当前工作目录
-        os.path.join(os.path.dirname(__file__), "..", "..", filename),  # src 布局
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", filename),
-    ]
+    possible_paths = []
+    
+    # PyInstaller 打包后的临时目录路径
+    if getattr(sys, 'frozen', False):
+        # 在 PyInstaller 打包的环境中运行
+        if hasattr(sys, '_MEIPASS'):
+            # 文件被解压到 _MEIPASS 目录
+            possible_paths.append(os.path.join(sys._MEIPASS, filename))
+        # 可执行文件所在目录
+        possible_paths.append(os.path.join(os.path.dirname(sys.executable), filename))
+    else:
+        # 开发环境
+        possible_paths.append(filename)  # 相对于当前工作目录
+        possible_paths.append(os.path.join(os.path.dirname(__file__), "..", "..", filename))  # src 布局
+        possible_paths.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", filename))
     
     for filepath in possible_paths:
         if os.path.exists(filepath):
