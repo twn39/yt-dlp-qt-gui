@@ -122,9 +122,30 @@ class MainWindow(QMainWindow):
         format_layout = QHBoxLayout()
         self.format_label = QLabel("下载格式:")
         self.format_combo = QComboBox()
-        self.format_combo.addItems(FORMAT_PRESETS.keys())
+        
+        # 为每个格式预设添加图标
+        format_icons = {
+            "最佳质量 (MP4)": qta.icon("fa5s.star", color=ICON_COLOR),
+            "最佳质量 (任意格式)": qta.icon("fa5s.crown", color=ICON_COLOR),
+            "1080p": qta.icon("fa5s.video", color=ICON_COLOR),
+            "720p": qta.icon("fa5s.film", color=ICON_COLOR),
+            "480p": qta.icon("fa5s.play-circle", color=ICON_COLOR),
+            "仅音频 (最佳)": qta.icon("fa5s.music", color=ICON_COLOR),
+            "仅音频 (MP3)": qta.icon("fa5s.headphones", color=ICON_COLOR),
+        }
+        
+        # 添加带图标的格式选项
+        for format_name in FORMAT_PRESETS.keys():
+            icon = format_icons.get(format_name, qta.icon("fa5s.file", color=ICON_COLOR))
+            self.format_combo.addItem(icon, format_name)
+        
         self.format_combo.setCurrentIndex(0)  # 默认选择第一个
         self.format_combo.setToolTip("选择视频下载质量和格式")
+        
+        # 设置下拉箭头图标
+        arrow_icon = qta.icon("fa5s.caret-down", color=ICON_COLOR)
+        self.format_combo.view().window().setWindowIcon(arrow_icon)
+        
         format_layout.addWidget(self.format_label)
         format_layout.addWidget(self.format_combo)
         format_layout.addStretch()
