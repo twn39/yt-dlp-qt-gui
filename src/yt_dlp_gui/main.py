@@ -1,6 +1,7 @@
 import sys
 import os
 from typing import Any
+import click
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QApplication,
@@ -27,8 +28,8 @@ from PySide6.QtCore import (
     Qt,
 )
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard
-from worker import DownloadWorker
-from config import (
+from .worker import DownloadWorker
+from .config import (
     WINDOW_TITLE,
     WINDOW_MIN_WIDTH,
     WINDOW_MIN_HEIGHT,
@@ -45,17 +46,24 @@ from config import (
 
 def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
     """加载 QSS 样式文件"""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    filepath = os.path.join(script_dir, filename)
-    if not os.path.exists(filepath):
-        print(f"警告: 样式文件未找到: {filepath}")
-        return None
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return f.read()
-    except Exception as e:
-        print(f"加载样式文件时出错: {e}")
-        return None
+    # 尝试多个可能的路径
+    possible_paths = [
+        filename,  # 相对于当前工作目录
+        os.path.join(os.path.dirname(__file__), "..", "..", filename),  # src 布局
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", filename),
+    ]
+    
+    for filepath in possible_paths:
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception as e:
+                print(f"加载样式文件时出错: {e}")
+                continue
+    
+    print(f"警告: 样式文件未找到，尝试的路径: {possible_paths}")
+    return None
 
 
 class MainWindow(QMainWindow):
@@ -534,8 +542,29 @@ class MainWindow(QMainWindow):
             event.accept()
 
 
-if __name__ == "__main__":
+def run_gui() -> None:
+    """启动 GUI 应用程序"""
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
+
+@click.command()
+@click.version_option(version="0.1.0", prog_name="yt-dlp-gui")
+def cli() -> None:
+    """Yt-dlp GUI - 现代化视频下载工具
+    
+    支持从 YouTube、Bilibili、Vimeo 等数千个视频网站下载视频。
+    """
+    run_gui()
+
+
+if __name__ == "__main__":
+    # 支持两种启动方式
+    # 如果是 click 的帮助或版本命令，使用 cli()
+    # 否则直接启动 GUI
+    if len(sys.argv) > 1 and sys.argv[1] in ["--help", "--version", "-h", "-V"]:
+        cli()
+    else:
+        run_gui()

@@ -66,6 +66,7 @@
 ### 环境要求
 
 -   Python 3.12 或更高版本
+-   uv (推荐的包管理器)
 -   FFmpeg (用于音视频合并，建议安装并添加到系统环境变量)
 
 ### 安装步骤
@@ -77,25 +78,79 @@
     ```
 
 2.  **安装依赖**
-    推荐使用 `uv` 或 `pip` 安装：
+    推荐使用 `uv` 安装：
     ```bash
-    pip install -r requirements.txt
-    # 或者使用 uv
     uv sync
     ```
 
 3.  **运行程序**
+    
+    有多种启动方式：
+    
+    **方式一：使用命令行工具（推荐）**
     ```bash
-    python main.py
+    uv run yt-dlp-gui
+    ```
+    
+    **方式二：使用模块方式运行**
+    ```bash
+    uv run python -m yt_dlp_gui
+    ```
+    
+    查看版本信息：
+    ```bash
+    uv run yt-dlp-gui --version
+    ```
+    
+    查看帮助信息：
+    ```bash
+    uv run yt-dlp-gui --help
     ```
 
 ---
 
 ## 🛠️ 技术栈
 
+## 📦 打包为可执行文件
+
+### 安装打包依赖
+
+```bash
+uv sync --extra packaging
+```
+
+### 执行打包
+
+```bash
+# 使用打包脚本（推荐）
+uv run python build.py
+
+# 或直接使用 PyInstaller
+uv run pyinstaller --clean yt-dlp-gui.spec
+```
+
+打包完成后，可执行文件位于 `dist/` 目录中。
+
+### 跨平台打包
+
+- **Windows**: 在 Windows 系统上打包，生成 `.exe` 文件
+- **macOS**: 在 macOS 系统上打包，生成可执行文件
+- **Linux**: 在 Linux 系统上打包，生成可执行文件
+
+### 注意事项
+
+- 打包后的应用仍需要系统安装 FFmpeg
+- macOS 用户可能需要在系统设置中允许运行未签名的应用
+- 首次运行可能需要防火墙权限
+
+## 🛠️ 技术栈
+
 -   **GUI 框架**: [PySide6](https://doc.qt.io/qtforpython/) (Qt for Python)
 -   **下载引擎**: [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 -   **图标库**: [QtAwesome](https://github.com/Spyder-IDE/qtawesome)
+-   **命令行工具**: [Click](https://click.palletsprojects.com/)
+-   **打包工具**: [PyInstaller](https://www.pyinstaller.org/)
+-   **包管理器**: [uv](https://github.com/astral-sh/uv)
 
 
 ## 📝 常见问题
@@ -149,11 +204,26 @@ cd yt-dlp-gui
 # 使用 uv 安装依赖（推荐）
 uv sync
 
-# 或使用 pip
-pip install -r requirements.txt
-
 # 运行程序
-python main.py
+uv run yt-dlp-gui
+```
+
+### 项目结构
+
+```
+yt-dlp-gui/
+├── pyproject.toml          # 项目配置文件
+├── README.md
+├── build.py                # 打包脚本
+├── yt-dlp-gui.spec         # PyInstaller 配置
+├── dark_theme.qss          # 样式文件
+└── src/
+    └── yt_dlp_gui/
+        ├── __init__.py     # 包初始化和 CLI 入口点
+        ├── __main__.py     # 模块入口点
+        ├── main.py         # GUI 主窗口
+        ├── config.py       # 配置常量
+        └── worker.py       # 下载工作线程
 ```
 
 ---

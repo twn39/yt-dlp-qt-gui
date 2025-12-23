@@ -3,7 +3,7 @@ from typing import Any
 from PySide6.QtCore import Signal, QObject, Slot
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled, DownloadError
-from config import DEFAULT_FORMAT, OUTPUT_TEMPLATE, NO_PLAYLIST, NO_PROGRESS
+from .config import DEFAULT_FORMAT, OUTPUT_TEMPLATE, NO_PLAYLIST, NO_PROGRESS
 
 
 class DownloadWorker(QObject):

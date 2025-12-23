@@ -1,12 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "yt-dlp-gui"
 version = "0.1.0"
-description = "Add your description here"
+description = "现代化视频下载工具，基于 yt-dlp 和 PySide6"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "pip>=25.3",
     "pyside6>=6.9.0",
     "qtawesome>=1.4.0",
     "yt-dlp>=2025.12.8",
+    "click>=8.1.0",
 ]
+
+[project.optional-dependencies]
+packaging = [
+    "pyinstaller>=6.0.0",
+]
+
+[project.scripts]
+yt-dlp-gui = "yt_dlp_gui:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+yt_dlp_gui = ["*.qss"]
+
