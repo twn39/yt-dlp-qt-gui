@@ -89,22 +89,18 @@
     
     **方式一：使用命令行工具（推荐）**
     ```bash
-    uv run yt-dlp-gui
+    uv run yt-dlp-qt-gui
     ```
     
-    **方式二：使用模块方式运行**
-    ```bash
-    uv run python -m yt_dlp_gui
-    ```
     
     查看版本信息：
     ```bash
-    uv run yt-dlp-gui --version
+    uv run yt-dlp-qt-gui --version
     ```
     
     查看帮助信息：
     ```bash
-    uv run yt-dlp-gui --help
+    uv run yt-dlp-qt-gui --help
     ```
 
 ---
@@ -126,7 +122,7 @@ uv sync --extra packaging
 uv run python build.py
 
 # 或直接使用 PyInstaller
-uv run pyinstaller --clean yt-dlp-gui.spec
+uv run pyinstaller --clean yt-dlp-qt-gui.spec
 ```
 
 打包完成后，可执行文件位于 `dist/` 目录中。
@@ -205,7 +201,7 @@ cd yt-dlp-gui
 uv sync
 
 # 运行程序
-uv run yt-dlp-gui
+uv run yt-dlp-qt-gui
 ```
 
 ---

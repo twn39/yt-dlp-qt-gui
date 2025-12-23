@@ -215,7 +215,7 @@ wheels = [
 ]
 
 [[package]]
-name = "yt-dlp-gui"
+name = "yt-dlp-qt-gui"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

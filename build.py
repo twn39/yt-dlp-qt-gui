@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-打包脚本 - 使用 PyInstaller 打包 yt-dlp-gui 应用
+打包脚本 - 使用 PyInstaller 打包 yt-dlp-qt-gui 应用
 
 使用方法:
     python build.py
@@ -24,7 +24,7 @@ def clean_build_dirs():
 def build():
     """执行打包"""
     print("=" * 50)
-    print("开始打包 yt-dlp-gui...")
+    print("开始打包 yt-dlp-qt-gui...")
     print("=" * 50)
     
     # 清理之前的构建
@@ -34,7 +34,7 @@ def build():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--clean",
-        "yt-dlp-gui.spec",
+        "yt-dlp-qt-gui.spec",
     ]
     
     print(f"执行命令: {' '.join(cmd)}")
@@ -46,7 +46,7 @@ def build():
         print("=" * 50)
         print("✓ 打包完成！")
         print("=" * 50)
-        print(f"可执行文件位于: dist/yt-dlp-gui")
+        print(f"可执行文件位于: dist/yt-dlp-qt-gui")
         print()
         print("注意事项:")
         print("- 打包后的应用仍需要系统安装 FFmpeg")

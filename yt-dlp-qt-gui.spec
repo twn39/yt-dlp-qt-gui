@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
 PyInstaller 配置文件
-用于将 yt-dlp-gui 打包为独立的可执行文件
+用于将 yt-dlp-qt-gui 打包为独立的可执行文件
 """
 
 block_cipher = None
@@ -43,7 +43,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='yt-dlp-gui',
+    name='yt-dlp-qt-gui',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
