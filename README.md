@@ -1,4 +1,4 @@
-# Yt-dlp GUI
+# Yt-dlp Qt GUI
 
 <div align="center">
 
@@ -18,7 +18,7 @@
 
 ## 📖 项目简介
 
-**Yt-dlp GUI** 是一款轻量级、现代化的跨平台视频下载工具，基于强大的 `yt-dlp` 内核和优雅的 `PySide6` 框架构建。它为用户提供了直观友好的图形界面，让下载来自 YouTube、Bilibili、Vimeo 等数千个视频网站的内容变得简单高效。
+**Yt-dlp Qt GUI** 是一款轻量级、现代化的跨平台视频下载工具，基于强大的 `yt-dlp` 内核和优雅的 `PySide6` 框架构建。它为用户提供了直观友好的图形界面，让下载来自 YouTube、Bilibili、Vimeo 等数千个视频网站的内容变得简单高效。
 
 ### 🎯 核心优势
 
@@ -73,7 +73,7 @@
 
 1.  **克隆仓库**
     ```bash
-    git clone https://github.com/twn39/yt-dlp-gui.git
+    git clone https://github.com/twn39/yt-dlp-qt-gui.git
     cd yt-dlp-gui
     ```
 
@@ -194,8 +194,8 @@ A: 本项目基于 `yt-dlp`，支持数千个视频网站，包括但不限于�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/twn39/yt-dlp-gui.git
-cd yt-dlp-gui
+git clone https://github.com/twn39/yt-dlp-qt-gui.git
+cd yt-dlp-qt-gui
 
 # 使用 uv 安装依赖（推荐）
 uv sync
@@ -229,6 +229,6 @@ uv run yt-dlp-qt-gui
 
 如有问题或建议，欢迎通过以下方式联系：
 
--   提交 [Issue](https://github.com/your-username/yt-dlp-gui/issues)
--   发起 [Pull Request](https://github.com/your-username/yt-dlp-gui/pulls)
+-   提交 [Issue](https://github.com/twn39/yt-dlp-qt-gui/issues)
+-   发起 [Pull Request](https://github.com/twn39/yt-dlp-qt-gui/pulls)
 
