@@ -156,6 +156,33 @@ class MainWindow(QMainWindow):
         arrow_icon = qta.icon("fa5s.caret-down", color=ICON_COLOR)
         self.format_combo.view().window().setWindowIcon(arrow_icon)
         
+        # 修复下拉列表白边问题
+        dropdown_view = self.format_combo.view()
+        dropdown_view.setStyleSheet("""
+            QAbstractItemView {
+                background-color: #2d2d2d;
+                border: 1px solid #555555;
+                outline: none;
+                padding: 0px;
+                margin: 0px;
+            }
+            QAbstractItemView::item {
+                padding: 6px 10px;
+                min-height: 25px;
+                border: none;
+                background-color: transparent;
+            }
+            QAbstractItemView::item:hover {
+                background-color: #444444;
+                border: none;
+            }
+            QAbstractItemView::item:selected {
+                background-color: #007acc;
+                color: white;
+                border: none;
+            }
+        """)
+        
         format_layout.addWidget(self.format_label)
         format_layout.addWidget(self.format_combo)
         format_layout.addStretch()

@@ -144,15 +144,119 @@ QComboBox QAbstractItemView {
     selection-color: white;
     color: #dcdcdc;
     outline: none;
+    show-decoration-selected: 1;
+    padding: 0px;
+    margin: 0px;
+    alternate-background-color: #2d2d2d;
+}
+
+QComboBox QListView {
+    background-color: #2d2d2d;
+    border: none;
+    outline: none;
+    padding: 0px;
+    margin: 0px;
 }
 
 QComboBox QAbstractItemView::item {
     padding: 6px 10px;
     min-height: 25px;
+    border: none;
+    background-color: transparent;
 }
 
 QComboBox QAbstractItemView::item:hover {
     background-color: #444444;
+    border: none;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #007acc;
+    color: white;
+    border: none;
+}
+
+/* Fix for dropdown list white edges */
+QComboBox QMenu {
+    background-color: #2d2d2d;
+    border: 1px solid #555555;
+    padding: 0px;
+    margin: 0px;
+}
+
+QComboBox QMenu::item {
+    background-color: #2d2d2d;
+    color: #dcdcdc;
+    padding: 6px 10px;
+    border: none;
+}
+
+QComboBox QMenu::item:selected {
+    background-color: #007acc;
+    color: white;
+}
+
+/* Dropdown panel styling */
+QComboBox QFrame {
+    background-color: #2d2d2d;
+    border: 1px solid #555555;
+    padding: 0px;
+    margin: 0px;
+}
+
+QComboBox QWidget {
+    background-color: #2d2d2d;
+}
+
+/* ScrollArea styling for dropdown */
+QComboBox QScrollArea {
+    background-color: #2d2d2d;
+    border: none;
+    padding: 0px;
+    margin: 0px;
+}
+
+QComboBox QScrollArea > QWidget > QWidget {
+    background-color: #2d2d2d;
+}
+
+QComboBox QScrollBar:vertical {
+    background-color: #2d2d2d;
+    width: 10px;
+    margin: 0px;
+    border: none;
+}
+
+QComboBox QScrollBar::handle:vertical {
+    background-color: #555555;
+    min-height: 25px;
+    border-radius: 5px;
+    margin: 0px;
+}
+
+QComboBox QScrollBar::add-line:vertical, QComboBox QScrollBar::sub-line:vertical {
+    height: 0px;
+    background: none;
+    border: none;
+}
+
+QComboBox QScrollBar::add-page:vertical, QComboBox QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+/* Additional styling for dropdown container */
+QComboBox QAbstractItemView {
+    background-color: #2d2d2d;
+    border: 1px solid #555555;
+    padding: 0px;
+    margin: 0px;
+}
+
+QComboBox QAbstractItemView::viewport {
+    background-color: #2d2d2d;
+    border: none;
+    padding: 0px;
+    margin: 0px;
 }
 
 /* StatusBar */
