@@ -1,16 +1,6 @@
-"""
-Yt-dlp GUI - 视频下载工具
-
-基于 PySide6 和 yt-dlp 的图形化视频下载工具。
-支持多种视频网站，提供格式选择、代理设置和拖拽 URL 功能。
-"""
-
-from __future__ import annotations
-
 import sys
 import os
 from typing import Any
-
 import qtawesome as qta
 from PySide6.QtWidgets import (
     QApplication,
@@ -37,7 +27,6 @@ from PySide6.QtCore import (
     Qt,
 )
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard
-
 from worker import DownloadWorker
 from config import (
     WINDOW_TITLE,

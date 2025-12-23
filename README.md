@@ -1,17 +1,65 @@
 # Yt-dlp GUI
 
-一个基于 **PySide6** 和 **yt-dlp** 开发的轻量级、现代化的视频下载工具。它提供了直观的图形用户界面，让您可以轻松下载来自各大视频网站的内容。
+<div align="center">
+
+![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
+![PySide6](https://img.shields.io/badge/PySide6-6.9.0+-green.svg)
+![yt-dlp](https://img.shields.io/badge/yt--dlp-2025.12.8+-red.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
+
+**一个基于 PySide6 和 yt-dlp 开发的现代化视频下载工具**
+
+[功能特性](#-功能特性) • [快速开始](#-快速开始) • [常见问题](#-常见问题) 
+
+</div>
+
+---
+
+## 📖 项目简介
+
+**Yt-dlp GUI** 是一款轻量级、现代化的跨平台视频下载工具，基于强大的 `yt-dlp` 内核和优雅的 `PySide6` 框架构建。它为用户提供了直观友好的图形界面，让下载来自 YouTube、Bilibili、Vimeo 等数千个视频网站的内容变得简单高效。
+
+### 🎯 核心优势
+
+- **🚀 高性能**：采用多线程架构，下载任务在后台运行，界面始终保持流畅响应
+- **🎨 现代化设计**：精心设计的深色主题界面，提供舒适的视觉体验
+- **🔧 高度可配置**：丰富的格式预设和自定义选项，满足不同场景需求
+- **🛡️ 稳定可靠**：完善的错误处理和重试机制，确保下载任务顺利完成
+- **🌐 网络友好**：内置代理支持，轻松应对网络访问限制
 
 ## ✨ 功能特性
 
--   **多平台支持**：基于强大的 `yt-dlp` 内核，支持数千个视频网站。
--   **直观界面**：采用 PySide6 构建的现代化深色主题界面。
--   **格式预设**：内置多种下载格式选项，包括 4K/1080p/720p 视频及仅音频下载。
--   **拖拽支持**：支持直接将视频 URL 拖拽到窗口中进行下载。
--   **实时进度**：详细的下载进度条、速度显示及剩余时间预测。
--   **代理设置**：内置 HTTP/SOCKS 代理支持，解决网络访问限制。
--   **多线程下载**：下载任务在后台线程运行，界面流畅不卡顿。
--   **日志记录**：完整的下载日志输出，方便排查问题。
+### 🎬 下载功能
+-   **多平台支持**：基于强大的 `yt-dlp` 内核，支持 YouTube、Bilibili、Vimeo、Twitter 等数千个视频网站
+-   **智能格式选择**：内置多种下载格式预设，包括最佳质量、4K、1080p、720p 视频及仅音频下载
+-   **自动音视频合并**：自动下载最佳视频和音频流，并使用 FFmpeg 合并为 MP4 格式
+-   **断点续传支持**：支持下载中断后继续，节省时间和带宽
+
+### 📊 进度与状态
+-   **实时进度显示**：详细的下载进度条，精确显示下载百分比
+-   **速度监控**：实时显示下载速度，了解当前网络状况
+-   **剩余时间预测**：智能计算并显示预计剩余时间
+-   **详细日志输出**：完整的下载日志记录，方便排查问题和追踪下载状态
+
+### ⚙️ 高级功能
+-   **代理支持**：内置 HTTP/SOCKS 代理配置，轻松应对网络访问限制
+-   **多线程架构**：下载任务在独立后台线程运行，界面始终保持流畅响应
+-   **任务取消**：下载过程中可随时取消，优雅退出
+-   **自定义保存路径**：灵活选择文件保存目录，默认使用系统下载文件夹
+-   **错误重试机制**：内置自动重试功能（最多 10 次），提高下载成功率
+
+## 📸 界面预览
+
+<div align="center">
+
+![主界面](./screenshot.png)
+
+*深色主题主界面，简洁直观的下载体验*
+
+</div>
+
+---
 
 ## 🚀 快速开始
 
@@ -41,34 +89,107 @@
     python main.py
     ```
 
+---
+
 ## 🛠️ 技术栈
 
 -   **GUI 框架**: [PySide6](https://doc.qt.io/qtforpython/) (Qt for Python)
 -   **下载引擎**: [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 -   **图标库**: [QtAwesome](https://github.com/Spyder-IDE/qtawesome)
--   **样式**: 自定义 QSS 深色主题
 
-## 📂 项目结构
 
--   [`main.py`](main.py): 程序入口，负责 UI 布局和交互逻辑。
--   [`worker.py`](worker.py): 核心下载逻辑，封装了 `yt-dlp` 的异步调用。
--   [`config.py`](config.py): 集中管理下载格式、UI 颜色和默认设置。
--   [`dark_theme.qss`](dark_theme.qss): 界面样式定义。
+## 📝 常见问题
 
-## ⚙️ 配置说明
+### Q: 下载失败怎么办？
 
-您可以在 [`config.py`](config.py) 中修改以下设置：
--   `DEFAULT_FORMAT`: 默认下载质量。
--   `FORMAT_PRESETS`: 下拉菜单中的格式选项。
--   `WINDOW_TITLE`: 窗口标题。
--   `PROXY`: 默认代理配置。
+A: 请检查以下几点：
+-   确认 URL 是否正确且可访问
+-   检查网络连接是否正常
+-   尝试使用代理解决网络限制
+-   查看日志输出了解具体错误信息
 
-## 📝 使用提示
+### Q: FFmpeg 是必须的吗？
 
--   **粘贴 URL**: 点击工具栏的“粘贴”图标或使用 `Ctrl+V`。
--   **保存目录**: 默认保存至系统的“下载”文件夹，可通过“浏览”按钮更改。
--   **取消下载**: 下载过程中可随时点击“取消”按钮中断任务。
+A: 是的。FFmpeg 用于音视频合并，建议安装并添加到系统环境变量中。如果未安装，某些视频格式可能无法正常下载。
 
-## ⚖️ 许可证
+### Q: 支持哪些视频网站？
 
-本项目仅供学习和研究使用，请遵守当地法律法规及目标网站的服务条款。
+A: 本项目基于 `yt-dlp`，支持数千个视频网站，包括但不限于：
+-   YouTube
+-   Bilibili
+-   Vimeo
+-   Twitter/X
+-   Instagram
+-   TikTok
+-   以及更多...
+
+完整支持列表请参考 [yt-dlp 官方文档](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
+
+---
+
+## 🤝 贡献指南
+
+欢迎贡献代码、报告问题或提出改进建议！
+
+### 如何贡献
+
+1.  Fork 本仓库
+2.  创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3.  提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4.  推送到分支 (`git push origin feature/AmazingFeature`)
+5.  开启 Pull Request
+
+### 开发环境设置
+
+```bash
+# 克隆仓库
+git clone https://github.com/your-username/yt-dlp-gui.git
+cd yt-dlp-gui
+
+# 使用 uv 安装依赖（推荐）
+uv sync
+
+# 或使用 pip
+pip install -r requirements.txt
+
+# 运行程序
+python main.py
+```
+
+---
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+---
+
+## 🙏 致谢
+
+本项目基于以下优秀的开源项目：
+
+-   [yt-dlp](https://github.com/yt-dlp/yt-dlp) - 强大的视频下载工具
+-   [PySide6](https://doc.qt.io/qtforpython/) - Qt for Python GUI 框架
+-   [QtAwesome](https://github.com/Spyder-IDE/qtawesome) - FontAwesome 图标库
+-   [FFmpeg](https://ffmpeg.org/) - 多媒体处理框架
+
+感谢所有为这些项目做出贡献的开发者！
+
+---
+
+## 📮 联系方式
+
+如有问题或建议，欢迎通过以下方式联系：
+
+-   提交 [Issue](https://github.com/your-username/yt-dlp-gui/issues)
+-   发起 [Pull Request](https://github.com/your-username/yt-dlp-gui/pulls)
+
+---
+
+<div align="center">
+
+**如果这个项目对你有帮助，请给一个 ⭐️ Star！**
+
+Made with ❤️ by [Your Name]
+
+</div>
