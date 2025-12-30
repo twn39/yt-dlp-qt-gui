@@ -201,8 +201,18 @@ class MainWindow(QMainWindow):
         proxy_container.addWidget(self.proxy_label)
         proxy_container.addWidget(self.proxy_input)
 
+        # 并发片段数输入
+        concurrent_container = QVBoxLayout()
+        concurrent_container.setSpacing(5)
+        self.concurrent_label = QLabel("并发片段数")
+        self.concurrent_input = QLineEdit()
+        self.concurrent_input.setPlaceholderText("例如: 4 (留空使用默认)")
+        concurrent_container.addWidget(self.concurrent_label)
+        concurrent_container.addWidget(self.concurrent_input)
+
         options_layout.addLayout(format_container, 1)
         options_layout.addLayout(proxy_container, 1)
+        options_layout.addLayout(concurrent_container, 1)
 
         # --- 下载目录 ---
         dir_container = QVBoxLayout()
@@ -411,6 +421,19 @@ class MainWindow(QMainWindow):
                 f"警告: 代理地址 '{proxy_address}' 格式可能不正确"
             )
 
+        # 获取并发片段数
+        concurrent_fragments = None
+        concurrent_text = self.concurrent_input.text().strip()
+        if concurrent_text:
+            try:
+                concurrent_fragments = int(concurrent_text)
+                if concurrent_fragments <= 0:
+                    self._append_log("警告: 并发片段数必须大于 0，将使用默认值")
+                    concurrent_fragments = None
+            except ValueError:
+                self._append_log(f"警告: 并发片段数 '{concurrent_text}' 格式不正确，将使用默认值")
+                concurrent_fragments = None
+
         # 获取下载路径
         download_path = self.download_directory_input.text().strip()
         if not download_path or not os.path.isdir(download_path):
@@ -442,6 +465,7 @@ class MainWindow(QMainWindow):
             download_path=download_path,
             format_preset=format_preset,
             proxy=proxy_address if proxy_address else None,
+            concurrent_fragments=concurrent_fragments,
         )
         self.current_worker.moveToThread(self.current_thread)
 

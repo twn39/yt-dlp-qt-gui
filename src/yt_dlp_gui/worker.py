@@ -20,6 +20,7 @@ class DownloadWorker(QObject):
         format_preset: str | None = None,
         ydl_opts: dict[str, Any] | None = None,
         proxy: str | None = None,
+        concurrent_fragments: int | None = None,
     ) -> None:
         """
         初始化下载工作器
@@ -30,6 +31,7 @@ class DownloadWorker(QObject):
             format_preset: 格式预设 (使用 config.py 中的格式字符串)
             ydl_opts: 额外的 yt-dlp 选项
             proxy: HTTP/SOCKS 代理地址
+            concurrent_fragments: 并发下载片段数
         """
         super().__init__()
         self.url = url
@@ -37,6 +39,7 @@ class DownloadWorker(QObject):
         self.format_preset = format_preset or DEFAULT_FORMAT
         self.ydl_opts = ydl_opts if ydl_opts else {}
         self.proxy = proxy
+        self.concurrent_fragments = concurrent_fragments
         self._is_cancelled = False
 
     def _progress_hook(self, d: dict[str, Any]) -> None:
@@ -91,6 +94,11 @@ class DownloadWorker(QObject):
             options["proxy"] = self.proxy
         else:
             self.log_message.emit("未使用代理")
+
+        # 添加并发片段设置
+        if self.concurrent_fragments is not None:
+            self.log_message.emit(f"并发片段数: {self.concurrent_fragments}")
+            options["concurrent_fragments"] = self.concurrent_fragments
 
         # 合并用户提供的选项 (如果将来有的话)
         options.update(self.ydl_opts)
