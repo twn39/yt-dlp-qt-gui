@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
 ![PySide6](https://img.shields.io/badge/PySide6-6.9.0+-green.svg)
 ![yt-dlp](https://img.shields.io/badge/yt--dlp-2025.12.8+-red.svg)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 
 **A modern video download tool built with PySide6 and yt-dlp**
@@ -173,7 +173,7 @@ Contributions, issues, and feature requests are welcome!
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) License - see the [LICENSE](LICENSE) file for details. **Commercial use is strictly prohibited.**
 
 ---
 

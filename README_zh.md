@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
 ![PySide6](https://img.shields.io/badge/PySide6-6.9.0+-green.svg)
 ![yt-dlp](https://img.shields.io/badge/yt--dlp-2025.12.8+-red.svg)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 
 **一个基于 PySide6 和 yt-dlp 开发的现代化视频下载工具**
@@ -212,7 +212,7 @@ uv run yt-dlp-qt-gui
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+本项目采用 知识共享署名-非商业性使用-相同方式共享 4.0 国际许可协议 (CC BY-NC-SA 4.0) - 详见 [LICENSE](LICENSE) 文件。**严禁任何形式的商业用途。**
 
 ---
 
