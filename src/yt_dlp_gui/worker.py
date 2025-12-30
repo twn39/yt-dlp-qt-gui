@@ -21,6 +21,7 @@ class DownloadWorker(QObject):
         ydl_opts: dict[str, Any] | None = None,
         proxy: str | None = None,
         concurrent_fragments: int | None = None,
+        write_subs: bool = False,
     ) -> None:
         """
         初始化下载工作器
@@ -32,6 +33,7 @@ class DownloadWorker(QObject):
             ydl_opts: 额外的 yt-dlp 选项
             proxy: HTTP/SOCKS 代理地址
             concurrent_fragments: 并发下载片段数
+            write_subs: 是否下载字幕
         """
         super().__init__()
         self.url = url
@@ -40,6 +42,7 @@ class DownloadWorker(QObject):
         self.ydl_opts = ydl_opts if ydl_opts else {}
         self.proxy = proxy
         self.concurrent_fragments = concurrent_fragments
+        self.write_subs = write_subs
         self._is_cancelled = False
 
     def _progress_hook(self, d: dict[str, Any]) -> None:
@@ -53,9 +56,14 @@ class DownloadWorker(QObject):
             self.progress.emit(d)
         elif d["status"] == "finished":
             if "filename" in d:
+                filename = d.get('filename', '')
                 self.log_message.emit(
-                    f"文件下载完成: {os.path.basename(d.get('filename', '未知文件'))}"
+                    f"文件下载完成: {os.path.basename(filename)}"
                 )
+                # 只有当下载的是视频文件（非字幕文件）时才发送合并状态
+                # 字幕文件通常以 .srt, .vtt, .ass 等结尾
+                if filename and not any(filename.endswith(ext) for ext in ['.srt', '.vtt', '.ass', '.ssa', '.json']):
+                    self.progress.emit({"status": "merging"})
             else:
                 self.log_message.emit(
                     f"处理步骤完成: {d.get('info_dict', {}).get('title', '未知任务')}"
@@ -99,6 +107,14 @@ class DownloadWorker(QObject):
         if self.concurrent_fragments is not None:
             self.log_message.emit(f"并发片段数: {self.concurrent_fragments}")
             options["concurrent_fragments"] = self.concurrent_fragments
+
+        # 添加字幕下载设置
+        if self.write_subs:
+            self.log_message.emit("启用字幕下载")
+            options["writesubtitles"] = True
+            options["subtitleslangs"] = ["all"]  # 下载所有可用语言的字幕
+        else:
+            self.log_message.emit("不下载字幕")
 
         # 合并用户提供的选项 (如果将来有的话)
         options.update(self.ydl_opts)

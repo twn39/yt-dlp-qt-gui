@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFileDialog,
     QComboBox,
+    QCheckBox,
 )
 from PySide6.QtCore import (
     QThread,
@@ -201,6 +202,13 @@ class MainWindow(QMainWindow):
         proxy_container.addWidget(self.proxy_label)
         proxy_container.addWidget(self.proxy_input)
 
+        options_layout.addLayout(format_container, 1)
+        options_layout.addLayout(proxy_container, 1)
+
+        # --- 并发片段与字幕选项 ---
+        advanced_layout = QHBoxLayout()
+        advanced_layout.setSpacing(20)
+
         # 并发片段数输入
         concurrent_container = QVBoxLayout()
         concurrent_container.setSpacing(5)
@@ -210,9 +218,17 @@ class MainWindow(QMainWindow):
         concurrent_container.addWidget(self.concurrent_label)
         concurrent_container.addWidget(self.concurrent_input)
 
-        options_layout.addLayout(format_container, 1)
-        options_layout.addLayout(proxy_container, 1)
-        options_layout.addLayout(concurrent_container, 1)
+        # 字幕下载选项
+        subs_container = QVBoxLayout()
+        subs_container.setSpacing(5)
+        self.subs_label = QLabel("字幕选项")
+        self.write_subs_checkbox = QCheckBox("下载字幕")
+        self.write_subs_checkbox.setToolTip("下载视频的字幕文件")
+        subs_container.addWidget(self.subs_label)
+        subs_container.addWidget(self.write_subs_checkbox)
+
+        advanced_layout.addLayout(concurrent_container, 1)
+        advanced_layout.addLayout(subs_container, 1)
 
         # --- 下载目录 ---
         dir_container = QVBoxLayout()
@@ -243,6 +259,7 @@ class MainWindow(QMainWindow):
         # 添加所有布局
         main_layout.addLayout(url_container)
         main_layout.addLayout(options_layout)
+        main_layout.addLayout(advanced_layout)
         main_layout.addLayout(dir_container)
         main_layout.addLayout(log_container)
 
@@ -434,6 +451,9 @@ class MainWindow(QMainWindow):
                 self._append_log(f"警告: 并发片段数 '{concurrent_text}' 格式不正确，将使用默认值")
                 concurrent_fragments = None
 
+        # 获取字幕下载选项
+        write_subs = self.write_subs_checkbox.isChecked()
+
         # 获取下载路径
         download_path = self.download_directory_input.text().strip()
         if not download_path or not os.path.isdir(download_path):
@@ -466,6 +486,7 @@ class MainWindow(QMainWindow):
             format_preset=format_preset,
             proxy=proxy_address if proxy_address else None,
             concurrent_fragments=concurrent_fragments,
+            write_subs=write_subs,
         )
         self.current_worker.moveToThread(self.current_thread)
 
@@ -529,6 +550,11 @@ class MainWindow(QMainWindow):
                     self.progress_bar.setMaximum(0)
                     self.progress_bar.setValue(0)
 
+            elif status == "merging":
+                self.status_label.setText("视频合并中...")
+                self.progress_bar.setFormat("合并中...")
+                self.progress_bar.setMaximum(0)
+                self.progress_bar.setValue(0)
             elif status == "finished":
                 filename = os.path.basename(progress_data.get("filename") or "未知文件")
                 self.status_label.setText(f"处理完成: {filename[:40]}...")
