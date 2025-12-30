@@ -1,12 +1,12 @@
-/* dark_theme.qss - Cinema 4D Inspired Style */
+/* dark_theme.qss - Cinema 4D Inspired Style (Refined) */
 
 /* General Styles */
 QWidget {
-    background-color: #3c3c3c; /* C4D-like dark gray background */
-    color: #dcdcdc; /* Light gray text */
-    font-family: "Segoe UI", Arial, sans-serif; /* Common UI font */
-    font-size: 9pt;
-    border: none; /* Remove borders by default */
+    background-color: #3c3c3c; /* 恢复原 C4D 深灰色背景 */
+    color: #dcdcdc; /* 恢复原亮灰色文字 */
+    font-family: "Inter", "Segoe UI", "PingFang SC", Arial, sans-serif;
+    font-size: 10pt;
+    border: none;
 }
 
 QMainWindow {
@@ -15,10 +15,10 @@ QMainWindow {
 
 /* ToolBar */
 QToolBar {
-    background-color: #333333; /* Slightly darker toolbar background */
-    border: none;
-    padding: 3px; /* Padding around the toolbar content */
-    spacing: 4px; /* Spacing between buttons */
+    background-color: #333333;
+    border-bottom: 1px solid #2d2d2d;
+    padding: 6px;
+    spacing: 8px;
 }
 
 /* ToolBar Buttons (QActions displayed as ToolButtons) */
@@ -55,17 +55,21 @@ QToolBar QToolButton:disabled {
 
 /* LineEdit (URL Input) */
 QLineEdit {
-    background-color: #2d2d2d; /* Darker input background */
-    border: 1px solid #555555; /* Standard border */
-    border-radius: 3px;
-    padding: 5px 8px; /* Vertical and horizontal padding */
+    background-color: #2d2d2d;
+    border: 1px solid #555555;
+    border-radius: 6px;
+    padding: 8px 12px;
     color: #dcdcdc;
-    font-size: 10pt; /* Slightly larger font for input */
+    font-size: 10pt;
 }
 
 QLineEdit:focus {
-    border: 1px solid #007acc; /* Accent color border on focus (e.g., blue) */
-    background-color: #383838; /* Slightly lighter background on focus */
+    border: 1px solid #007acc;
+    background-color: #383838;
+}
+
+QLineEdit:hover {
+    border: 1px solid #666666;
 }
 
 /* TextEdit (Log Output) */
@@ -83,30 +87,43 @@ QTextEdit {
 /* ProgressBar */
 QProgressBar {
     border: 1px solid #555555;
-    border-radius: 3px;
+    border-radius: 4px;
     text-align: center;
     color: #dcdcdc;
     background-color: #2d2d2d;
-    height: 18px; /* Slightly taller progress bar */
+    height: 12px;
 }
 
 QProgressBar::chunk {
-    background-color: #007acc; /* Accent color for progress chunk (blue) */
-    /* Use #ff8c00 for orange accent */
-    border-radius: 2px;
-    margin: 1px; /* Margin inside the progress bar */
+    background-color: #007acc;
+    border-radius: 3px;
 }
 
 /* Label */
 QLabel {
     color: #dcdcdc;
-    background-color: transparent; /* Ensure labels don't have odd backgrounds */
-    padding: 2px; /* Add slight padding if needed */
-    font-size: 14pt;
+    background-color: transparent;
+    padding: 2px;
+    font-size: 10pt;
+    font-weight: 500;
 }
 
 QPushButton {
-    font-size: 12pt;
+    background-color: #555555;
+    border: 1px solid #666666;
+    border-radius: 6px;
+    padding: 6px 16px;
+    color: #dcdcdc;
+    font-size: 10pt;
+}
+
+QPushButton:hover {
+    background-color: #666666;
+    border: 1px solid #777777;
+}
+
+QPushButton:pressed {
+    background-color: #444444;
 }
 
 /* ComboBox (Format Selection) */

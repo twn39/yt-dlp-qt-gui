@@ -116,21 +116,27 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(20, 20, 20, 20)
 
         # --- URL 输入 ---
-        url_layout = QHBoxLayout()
-        self.url_label = QLabel("视频 URL:")
+        url_container = QVBoxLayout()
+        url_container.setSpacing(5)
+        self.url_label = QLabel("视频 URL")
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("在此粘贴视频链接，或拖拽 URL 到此窗口...")
-        self.url_input.returnPressed.connect(self._start_download)  # 回车开始下载
-        url_layout.addWidget(self.url_label)
-        url_layout.addWidget(self.url_input)
+        self.url_input.returnPressed.connect(self._start_download)
+        url_container.addWidget(self.url_label)
+        url_container.addWidget(self.url_input)
 
-        # --- 格式选择 ---
-        format_layout = QHBoxLayout()
-        self.format_label = QLabel("下载格式:")
+        # --- 格式与代理 ---
+        options_layout = QHBoxLayout()
+        options_layout.setSpacing(20)
+
+        # 格式选择
+        format_container = QVBoxLayout()
+        format_container.setSpacing(5)
+        self.format_label = QLabel("下载格式")
         self.format_combo = QComboBox()
         
         # 为每个格式预设添加图标
@@ -183,43 +189,52 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        format_layout.addWidget(self.format_label)
-        format_layout.addWidget(self.format_combo)
-        format_layout.addStretch()
-
-        # --- 代理输入 ---
-        proxy_layout = QHBoxLayout()
-        self.proxy_label = QLabel("HTTP 代理:")
+        format_container.addWidget(self.format_label)
+        format_container.addWidget(self.format_combo)
+        
+        # 代理输入
+        proxy_container = QVBoxLayout()
+        proxy_container.setSpacing(5)
+        self.proxy_label = QLabel("HTTP 代理")
         self.proxy_input = QLineEdit()
-        self.proxy_input.setPlaceholderText(
-            "例如: http://127.0.0.1:7890 (留空则不使用)"
-        )
-        proxy_layout.addWidget(self.proxy_label)
-        proxy_layout.addWidget(self.proxy_input)
+        self.proxy_input.setPlaceholderText("例如: http://127.0.0.1:7890")
+        proxy_container.addWidget(self.proxy_label)
+        proxy_container.addWidget(self.proxy_input)
+
+        options_layout.addLayout(format_container, 1)
+        options_layout.addLayout(proxy_container, 1)
 
         # --- 下载目录 ---
-        download_dir_layout = QHBoxLayout()
-        self.download_dir_label = QLabel("保存目录:")
+        dir_container = QVBoxLayout()
+        dir_container.setSpacing(5)
+        self.download_dir_label = QLabel("保存目录")
+        
+        dir_input_layout = QHBoxLayout()
         self.download_directory_input = QLineEdit(self.selected_download_path)
         self.download_directory_input.setReadOnly(True)
         self.select_dir_button = QPushButton("浏览...")
-        self.select_dir_button.setToolTip("选择视频保存的文件夹")
         self.select_dir_button.clicked.connect(self._select_download_directory)
-        download_dir_layout.addWidget(self.download_dir_label)
-        download_dir_layout.addWidget(self.download_directory_input)
-        download_dir_layout.addWidget(self.select_dir_button)
+        dir_input_layout.addWidget(self.download_directory_input)
+        dir_input_layout.addWidget(self.select_dir_button)
+        
+        dir_container.addWidget(self.download_dir_label)
+        dir_container.addLayout(dir_input_layout)
 
-        # --- 日志/输出区域 ---
+        # --- 日志区域 ---
+        log_container = QVBoxLayout()
+        log_container.setSpacing(5)
+        log_label = QLabel("下载日志")
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
-        self.log_output.setPlaceholderText("下载日志将在此显示...")
+        self.log_output.setPlaceholderText("等待任务开始...")
+        log_container.addWidget(log_label)
+        log_container.addWidget(self.log_output)
 
         # 添加所有布局
-        main_layout.addLayout(url_layout)
-        main_layout.addLayout(format_layout)
-        main_layout.addLayout(proxy_layout)
-        main_layout.addLayout(download_dir_layout)
-        main_layout.addWidget(self.log_output)
+        main_layout.addLayout(url_container)
+        main_layout.addLayout(options_layout)
+        main_layout.addLayout(dir_container)
+        main_layout.addLayout(log_container)
 
     def _setup_toolbar(self) -> None:
         """设置工具栏及其动作"""
