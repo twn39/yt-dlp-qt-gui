@@ -1,6 +1,8 @@
-# Yt-dlp Qt GUI
-
 <div align="center">
+
+<img src="logo.png" width="128" height="128" alt="Logo">
+
+# Yt-dlp Qt GUI
 
 ![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
 ![PySide6](https://img.shields.io/badge/PySide6-6.9.0+-green.svg)
@@ -8,227 +10,183 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 
-**一个基于 PySide6 和 yt-dlp 开发的现代化视频下载工具**
+**A modern video download tool built with PySide6 and yt-dlp**
 
-[功能特性](#-功能特性) • [快速开始](#-快速开始) • [常见问题](#-常见问题) 
+[English] | [简体中文](./README_zh.md)
+
+[Features](#-features) • [Quick Start](#-quick-start) • [FAQ](#-faq) 
 
 </div>
 
 ---
 
-## 📖 项目简介
+## 📖 Introduction
 
-**Yt-dlp Qt GUI** 是一款轻量级、现代化的跨平台视频下载工具，基于强大的 `yt-dlp` 内核和优雅的 `PySide6` 框架构建。它为用户提供了直观友好的图形界面，让下载来自 YouTube、Bilibili、Vimeo 等数千个视频网站的内容变得简单高效。
+**Yt-dlp Qt GUI** is a lightweight, modern, cross-platform video download tool built on the powerful `yt-dlp` core and the elegant `PySide6` framework. It provides a user-friendly graphical interface, making it simple and efficient to download content from thousands of video sites like YouTube, Bilibili, Vimeo, and more.
 
-### 🎯 核心优势
+### 🎯 Key Advantages
 
-- **🚀 高性能**：采用多线程架构，下载任务在后台运行，界面始终保持流畅响应
-- **🎨 现代化设计**：精心设计的深色主题界面，提供舒适的视觉体验
-- **🔧 高度可配置**：丰富的格式预设和自定义选项，满足不同场景需求
-- **🛡️ 稳定可靠**：完善的错误处理和重试机制，确保下载任务顺利完成
-- **🌐 网络友好**：内置代理支持，轻松应对网络访问限制
+- **🚀 High Performance**: Utilizes a multi-threaded architecture; download tasks run in the background, keeping the UI smooth and responsive.
+- **🎨 Modern Design**: Carefully crafted dark theme interface for a comfortable visual experience.
+- **🔧 Highly Configurable**: Rich format presets and custom options to meet various needs.
+- **🛡️ Stable & Reliable**: Robust error handling and retry mechanisms ensure tasks are completed.
+- **🌐 Network Friendly**: Built-in proxy support to easily handle network restrictions.
 
-## ✨ 功能特性
+## ✨ Features
 
-### 🎬 下载功能
--   **多平台支持**：基于强大的 `yt-dlp` 内核，支持 YouTube、Bilibili、Vimeo、Twitter 等数千个视频网站
--   **智能格式选择**：内置多种下载格式预设，包括最佳质量、4K、1080p、720p 视频及仅音频下载
--   **自动音视频合并**：自动下载最佳视频和音频流，并使用 FFmpeg 合并为 MP4 格式
--   **断点续传支持**：支持下载中断后继续，节省时间和带宽
+### 🎬 Downloading
+-   **Multi-platform Support**: Powered by `yt-dlp`, supporting thousands of sites including YouTube, Bilibili, Vimeo, Twitter, etc.
+-   **Smart Format Selection**: Built-in presets for Best Quality, 4K, 1080p, 720p, and Audio-only downloads.
+-   **Automatic Merging**: Automatically downloads the best video and audio streams and merges them into MP4 using FFmpeg.
+-   **Resume Support**: Supports resuming interrupted downloads to save time and bandwidth.
 
-### 📊 进度与状态
--   **实时进度显示**：详细的下载进度条，精确显示下载百分比
--   **速度监控**：实时显示下载速度，了解当前网络状况
--   **剩余时间预测**：智能计算并显示预计剩余时间
--   **详细日志输出**：完整的下载日志记录，方便排查问题和追踪下载状态
+### 📊 Progress & Status
+-   **Real-time Progress**: Detailed progress bars showing exact percentages.
+-   **Speed Monitoring**: Real-time download speed display.
+-   **ETA Prediction**: Smart calculation of estimated remaining time.
+-   **Detailed Logs**: Complete download logs for troubleshooting and tracking.
 
-### ⚙️ 高级功能
--   **代理支持**：内置 HTTP/SOCKS 代理配置，轻松应对网络访问限制
--   **多线程架构**：下载任务在独立后台线程运行，界面始终保持流畅响应
--   **任务取消**：下载过程中可随时取消，优雅退出
--   **自定义保存路径**：灵活选择文件保存目录，默认使用系统下载文件夹
--   **错误重试机制**：内置自动重试功能（最多 10 次），提高下载成功率
+### ⚙️ Advanced Features
+-   **Proxy Support**: Built-in HTTP/SOCKS proxy configuration.
+-   **Multi-threaded**: Independent background threads for downloads.
+-   **Task Cancellation**: Gracefully cancel downloads at any time.
+-   **Custom Save Path**: Flexible directory selection (defaults to system Downloads folder).
+-   **Retry Mechanism**: Automatic retries (up to 10 times) to improve success rates.
 
-## 📸 界面预览
+## 📸 Preview
 
 <div align="center">
 
-![主界面](./screenshot.png)
+![Main Interface](./screenshot.png)
 
-*深色主题主界面，简洁直观的下载体验*
+*Modern dark theme interface for a clean download experience*
 
 </div>
 
 ---
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 环境要求
+### Prerequisites
 
--   Python 3.12 或更高版本
--   uv (推荐的包管理器)
--   FFmpeg (用于音视频合并，建议安装并添加到系统环境变量)
+-   Python 3.12 or higher
+-   uv (Recommended package manager)
+-   FFmpeg (Required for merging; ensure it's in your system PATH)
 
-### 安装步骤
+### Installation
 
-1.  **克隆仓库**
+1.  **Clone the Repository**
     ```bash
     git clone https://github.com/twn39/yt-dlp-qt-gui.git
     cd yt-dlp-gui
     ```
 
-2.  **安装依赖**
-    推荐使用 `uv` 安装：
+2.  **Install Dependencies**
+    Recommended using `uv`:
     ```bash
     uv sync
     ```
 
-3.  **运行程序**
+3.  **Run the Application**
     
-    有多种启动方式：
+    Multiple ways to start:
     
-    **方式一：使用命令行工具（推荐）**
+    **Option 1: Using CLI (Recommended)**
     ```bash
     uv run yt-dlp-qt-gui
     ```
     
-    
-    查看版本信息：
+    Check version:
     ```bash
     uv run yt-dlp-qt-gui --version
     ```
     
-    查看帮助信息：
+    Help info:
     ```bash
     uv run yt-dlp-qt-gui --help
     ```
 
 ---
 
-## 🛠️ 技术栈
+## 📦 Packaging
 
-## 📦 打包为可执行文件
-
-### 安装打包依赖
+### Install Packaging Dependencies
 
 ```bash
 uv sync --extra packaging
 ```
 
-### 执行打包
+### Build Executable
 
 ```bash
-# 使用打包脚本（推荐）
+# Using build script (Recommended)
 uv run python build.py
 
-# 或直接使用 PyInstaller
+# Or using PyInstaller directly
 uv run pyinstaller --clean yt-dlp-qt-gui.spec
 ```
 
-打包完成后，可执行文件位于 `dist/` 目录中。
+The executable will be located in the `dist/` directory.
 
-### 跨平台打包
+### Cross-platform
 
-- **Windows**: 在 Windows 系统上打包，生成 `.exe` 文件
-- **macOS**: 在 macOS 系统上打包，生成可执行文件
-- **Linux**: 在 Linux 系统上打包，生成可执行文件
-
-### 注意事项
-
-- 打包后的应用仍需要系统安装 FFmpeg
-- macOS 用户可能需要在系统设置中允许运行未签名的应用
-- 首次运行可能需要防火墙权限
-
-## 🛠️ 技术栈
-
--   **GUI 框架**: [PySide6](https://doc.qt.io/qtforpython/) (Qt for Python)
--   **下载引擎**: [yt-dlp](https://github.com/yt-dlp/yt-dlp)
--   **图标库**: [QtAwesome](https://github.com/Spyder-IDE/qtawesome)
--   **命令行工具**: [Click](https://click.palletsprojects.com/)
--   **打包工具**: [PyInstaller](https://www.pyinstaller.org/)
--   **包管理器**: [uv](https://github.com/astral-sh/uv)
-
-
-## 📝 常见问题
-
-### Q: 下载失败怎么办？
-
-A: 请检查以下几点：
--   确认 URL 是否正确且可访问
--   检查网络连接是否正常
--   尝试使用代理解决网络限制
--   查看日志输出了解具体错误信息
-
-### Q: FFmpeg 是必须的吗？
-
-A: 是的。FFmpeg 用于音视频合并，建议安装并添加到系统环境变量中。如果未安装，某些视频格式可能无法正常下载。
-
-### Q: 支持哪些视频网站？
-
-A: 本项目基于 `yt-dlp`，支持数千个视频网站，包括但不限于：
--   YouTube
--   Bilibili
--   Vimeo
--   Twitter/X
--   Instagram
--   TikTok
--   以及更多...
-
-完整支持列表请参考 [yt-dlp 官方文档](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
+- **Windows**: Build on Windows for `.exe`
+- **macOS**: Build on macOS for app/executable
+- **Linux**: Build on Linux for executable
 
 ---
 
-## 🤝 贡献指南
+## 🛠️ Tech Stack
 
-欢迎贡献代码、报告问题或提出改进建议！
+-   **GUI Framework**: [PySide6](https://doc.qt.io/qtforpython/) (Qt for Python)
+-   **Engine**: [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+-   **Icons**: [QtAwesome](https://github.com/Spyder-IDE/qtawesome)
+-   **CLI**: [Click](https://click.palletsprojects.com/)
+-   **Packaging**: [PyInstaller](https://www.pyinstaller.org/)
+-   **Package Manager**: [uv](https://github.com/astral-sh/uv)
 
-### 如何贡献
+## 📝 FAQ
 
-1.  Fork 本仓库
-2.  创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3.  提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4.  推送到分支 (`git push origin feature/AmazingFeature`)
-5.  开启 Pull Request
+### Q: What if a download fails?
+A: Please check:
+-   URL is correct and accessible.
+-   Network connection is stable.
+-   Try using a proxy if there are regional restrictions.
+-   Check logs for specific error details.
 
-### 开发环境设置
-
-```bash
-# 克隆仓库
-git clone https://github.com/twn39/yt-dlp-qt-gui.git
-cd yt-dlp-qt-gui
-
-# 使用 uv 安装依赖（推荐）
-uv sync
-
-# 运行程序
-uv run yt-dlp-qt-gui
-```
+### Q: Is FFmpeg mandatory?
+A: Yes. FFmpeg is used to merge video and audio. Without it, some formats may not download correctly.
 
 ---
 
-## 📄 许可证
+## 🤝 Contributing
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+Contributions, issues, and feature requests are welcome!
 
----
-
-## 🙏 致谢
-
-本项目基于以下优秀的开源项目：
-
--   [yt-dlp](https://github.com/yt-dlp/yt-dlp) - 强大的视频下载工具
--   [PySide6](https://doc.qt.io/qtforpython/) - Qt for Python GUI 框架
--   [QtAwesome](https://github.com/Spyder-IDE/qtawesome) - FontAwesome 图标库
--   [FFmpeg](https://ffmpeg.org/) - 多媒体处理框架
-
-感谢所有为这些项目做出贡献的开发者！
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
 ---
 
-## 📮 联系方式
+## 📄 License
 
-如有问题或建议，欢迎通过以下方式联系：
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
--   提交 [Issue](https://github.com/twn39/yt-dlp-qt-gui/issues)
--   发起 [Pull Request](https://github.com/twn39/yt-dlp-qt-gui/pulls)
+---
 
+## 🙏 Acknowledgments
+
+-   [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+-   [PySide6](https://doc.qt.io/qtforpython/)
+-   [QtAwesome](https://github.com/Spyder-IDE/qtawesome)
+-   [FFmpeg](https://ffmpeg.org/)
+
+---
+
+## 📮 Contact
+
+-   Open an [Issue](https://github.com/twn39/yt-dlp-qt-gui/issues)
+-   Submit a [Pull Request](https://github.com/twn39/yt-dlp-qt-gui/pulls)
