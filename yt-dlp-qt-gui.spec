@@ -12,6 +12,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('dark_theme.qss', '.'),  # 样式文件
+        ('src/yt_dlp_gui/resources/logo.jpg', '.'),  # 应用图标
     ],
     hiddenimports=[
         'PySide6.QtCore',
@@ -39,22 +40,40 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='yt-dlp-qt-gui',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,  # 不显示控制台窗口
+    console=False,
     disable_windowed_traceback=False,
-    argv_emulation=False,
+    argv_emulation=True,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # 可以添加图标路径，例如: 'assets/icon.ico'
+    icon='logo.icns',
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='yt-dlp-qt-gui',
+)
+
+app = BUNDLE(
+    coll,
+    name='yt-dlp-qt-gui.app',
+    icon='logo.icns',
+    bundle_identifier='com.yt-dlp-gui.app',
+    info_plist={
+        'NSHighResolutionCapable': 'True',
+        'LSBackgroundOnly': 'False',
+    },
 )

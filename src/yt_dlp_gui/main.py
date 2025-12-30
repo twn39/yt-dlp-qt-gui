@@ -28,7 +28,7 @@ from PySide6.QtCore import (
     QMimeData,
     Qt,
 )
-from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard
+from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard, QIcon
 from .worker import DownloadWorker
 from .config import (
     WINDOW_TITLE,
@@ -77,6 +77,36 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
     return None
 
 
+def load_icon(filename: str = "src/yt_dlp_gui/resources/logo.jpg") -> QIcon | None:
+    """加载图标文件"""
+    # 尝试多个可能的路径
+    possible_paths = []
+    
+    # PyInstaller 打包后的临时目录路径
+    if getattr(sys, 'frozen', False):
+        # 在 PyInstaller 打包的环境中运行
+        if hasattr(sys, '_MEIPASS'):
+            # 文件被解压到 _MEIPASS 目录
+            possible_paths.append(os.path.join(sys._MEIPASS, filename))
+        # 可执行文件所在目录
+        possible_paths.append(os.path.join(os.path.dirname(sys.executable), filename))
+    else:
+        # 开发环境
+        possible_paths.append(filename)  # 相对于当前工作目录
+        possible_paths.append(os.path.join(os.path.dirname(__file__), "resources", os.path.basename(filename)))
+    
+    for filepath in possible_paths:
+        if os.path.exists(filepath):
+            try:
+                return QIcon(filepath)
+            except Exception as e:
+                print(f"加载图标文件时出错: {e}")
+                continue
+    
+    print(f"警告: 图标文件未找到，尝试的路径: {possible_paths}")
+    return None
+
+
 class MainWindow(QMainWindow):
     """主窗口类"""
 
@@ -84,6 +114,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(WINDOW_TITLE)
         self.setGeometry(100, 100, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
+
+        # 设置窗口图标
+        icon = load_icon()
+        if icon:
+            self.setWindowIcon(icon)
 
         # 启用拖拽
         self.setAcceptDrops(True)
