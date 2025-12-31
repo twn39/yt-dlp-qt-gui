@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QComboBox,
     QCheckBox,
+    QGroupBox,
+    QGridLayout,
 )
 from PySide6.QtCore import (
     QThread,
@@ -28,7 +30,7 @@ from PySide6.QtCore import (
     QMimeData,
     Qt,
 )
-from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard, QIcon
+from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard, QIcon, QFont
 from .worker import DownloadWorker
 from .config import (
     WINDOW_TITLE,
@@ -159,24 +161,25 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # --- URL 输入 ---
-        url_container = QVBoxLayout()
-        url_container.setSpacing(5)
-        self.url_label = QLabel("视频 URL")
+        # === URL 输入区域 ===
+        url_group = QGroupBox("视频链接")
+        url_group_layout = QVBoxLayout()
+        url_group_layout.setSpacing(5)
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("在此粘贴视频链接，或拖拽 URL 到此窗口...")
         self.url_input.returnPressed.connect(self._start_download)
-        url_container.addWidget(self.url_label)
-        url_container.addWidget(self.url_input)
+        url_group_layout.addWidget(self.url_input)
+        url_group.setLayout(url_group_layout)
+        main_layout.addWidget(url_group)
 
-        # --- 格式与代理 ---
-        options_layout = QHBoxLayout()
-        options_layout.setSpacing(20)
+        # === 下载选项区域 ===
+        download_options_group = QGroupBox("下载选项")
+        download_options_layout = QGridLayout()
+        download_options_layout.setSpacing(10)
+        download_options_layout.setContentsMargins(10, 10, 10, 10)
 
         # 格式选择
-        format_container = QVBoxLayout()
-        format_container.setSpacing(5)
-        self.format_label = QLabel("下载格式")
+        format_label = QLabel("下载格式:")
         self.format_combo = QComboBox()
         
         # 为每个格式预设添加图标
@@ -229,97 +232,78 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        format_container.addWidget(self.format_label)
-        format_container.addWidget(self.format_combo)
+        download_options_layout.addWidget(format_label, 0, 0)
+        download_options_layout.addWidget(self.format_combo, 0, 1)
         
         # 代理输入
-        proxy_container = QVBoxLayout()
-        proxy_container.setSpacing(5)
-        self.proxy_label = QLabel("HTTP 代理")
+        proxy_label = QLabel("HTTP 代理:")
         self.proxy_input = QLineEdit()
         self.proxy_input.setPlaceholderText("例如: http://127.0.0.1:7890")
-        proxy_container.addWidget(self.proxy_label)
-        proxy_container.addWidget(self.proxy_input)
-
-        options_layout.addLayout(format_container, 1)
-        options_layout.addLayout(proxy_container, 1)
-
-        # --- 并发片段与字幕选项 ---
-        advanced_layout = QHBoxLayout()
-        advanced_layout.setSpacing(20)
+        download_options_layout.addWidget(proxy_label, 0, 2)
+        download_options_layout.addWidget(self.proxy_input, 0, 3)
 
         # 并发片段数输入
-        concurrent_container = QVBoxLayout()
-        concurrent_container.setSpacing(5)
-        self.concurrent_label = QLabel("并发片段数")
+        concurrent_label = QLabel("并发片段数:")
         self.concurrent_input = QLineEdit()
         self.concurrent_input.setPlaceholderText("例如: 4 (留空使用默认)")
-        concurrent_container.addWidget(self.concurrent_label)
-        concurrent_container.addWidget(self.concurrent_input)
+        download_options_layout.addWidget(concurrent_label, 1, 0)
+        download_options_layout.addWidget(self.concurrent_input, 1, 1)
 
         # 字幕下载选项
-        subs_container = QVBoxLayout()
-        subs_container.setSpacing(5)
-        self.subs_label = QLabel("字幕选项")
+        subs_label = QLabel("字幕选项:")
         self.write_subs_checkbox = QCheckBox("下载字幕")
         self.write_subs_checkbox.setToolTip("下载视频的字幕文件")
-        subs_container.addWidget(self.subs_label)
-        subs_container.addWidget(self.write_subs_checkbox)
+        download_options_layout.addWidget(subs_label, 1, 2)
+        download_options_layout.addWidget(self.write_subs_checkbox, 1, 3)
 
-        advanced_layout.addLayout(concurrent_container, 1)
-        advanced_layout.addLayout(subs_container, 1)
+        download_options_group.setLayout(download_options_layout)
+        main_layout.addWidget(download_options_group)
 
-        # --- 播放列表选项 ---
-        playlist_layout = QHBoxLayout()
-        playlist_layout.setSpacing(20)
+        # === 播放列表选项区域 ===
+        playlist_group = QGroupBox("播放列表设置")
+        playlist_layout = QGridLayout()
+        playlist_layout.setSpacing(10)
+        playlist_layout.setContentsMargins(10, 10, 10, 10)
 
         # 下载播放列表开关
-        playlist_download_container = QVBoxLayout()
-        playlist_download_container.setSpacing(5)
-        self.playlist_download_label = QLabel("播放列表")
-        self.download_playlist_checkbox = QCheckBox("下载播放列表")
+        playlist_label = QLabel("下载播放列表:")
+        self.download_playlist_checkbox = QCheckBox("启用")
         self.download_playlist_checkbox.setChecked(DEFAULT_DOWNLOAD_PLAYLIST)
         self.download_playlist_checkbox.setToolTip("下载整个播放列表而不是单个视频")
-        playlist_download_container.addWidget(self.playlist_download_label)
-        playlist_download_container.addWidget(self.download_playlist_checkbox)
+        playlist_layout.addWidget(playlist_label, 0, 0)
+        playlist_layout.addWidget(self.download_playlist_checkbox, 0, 1)
 
         # 播放列表项目范围
-        playlist_items_container = QVBoxLayout()
-        playlist_items_container.setSpacing(5)
-        self.playlist_items_label = QLabel("项目范围")
+        playlist_items_label = QLabel("项目范围:")
         self.playlist_items_input = QLineEdit()
         self.playlist_items_input.setPlaceholderText("例如: 1-5,7,10 (留空下载全部)")
         self.playlist_items_input.setText(DEFAULT_PLAYLIST_ITEMS)
-        playlist_items_container.addWidget(self.playlist_items_label)
-        playlist_items_container.addWidget(self.playlist_items_input)
+        playlist_layout.addWidget(playlist_items_label, 0, 2)
+        playlist_layout.addWidget(self.playlist_items_input, 0, 3)
 
-        # 随机顺序和最大下载数
-        playlist_advanced_container = QVBoxLayout()
-        playlist_advanced_container.setSpacing(5)
-        
         # 随机顺序复选框
-        self.playlist_random_checkbox = QCheckBox("随机顺序")
+        random_label = QLabel("随机顺序:")
+        self.playlist_random_checkbox = QCheckBox("启用")
         self.playlist_random_checkbox.setChecked(DEFAULT_PLAYLIST_RANDOM)
         self.playlist_random_checkbox.setToolTip("随机顺序下载播放列表中的视频")
-        
+        playlist_layout.addWidget(random_label, 1, 0)
+        playlist_layout.addWidget(self.playlist_random_checkbox, 1, 1)
+
         # 最大下载数输入
-        self.max_downloads_label = QLabel("最大下载数")
+        max_downloads_label = QLabel("最大下载数:")
         self.max_downloads_input = QLineEdit()
         self.max_downloads_input.setPlaceholderText("例如: 10 (留空无限制)")
         self.max_downloads_input.setText(DEFAULT_MAX_DOWNLOADS)
-        
-        playlist_advanced_container.addWidget(self.playlist_random_checkbox)
-        playlist_advanced_container.addWidget(self.max_downloads_label)
-        playlist_advanced_container.addWidget(self.max_downloads_input)
+        playlist_layout.addWidget(max_downloads_label, 1, 2)
+        playlist_layout.addWidget(self.max_downloads_input, 1, 3)
 
-        playlist_layout.addLayout(playlist_download_container, 1)
-        playlist_layout.addLayout(playlist_items_container, 1)
-        playlist_layout.addLayout(playlist_advanced_container, 1)
+        playlist_group.setLayout(playlist_layout)
+        main_layout.addWidget(playlist_group)
 
-        # --- 下载目录 ---
-        dir_container = QVBoxLayout()
-        dir_container.setSpacing(5)
-        self.download_dir_label = QLabel("保存目录")
+        # === 保存目录区域 ===
+        dir_group = QGroupBox("保存目录")
+        dir_layout = QVBoxLayout()
+        dir_layout.setSpacing(5)
         
         dir_input_layout = QHBoxLayout()
         self.download_directory_input = QLineEdit(self.selected_download_path)
@@ -329,26 +313,46 @@ class MainWindow(QMainWindow):
         dir_input_layout.addWidget(self.download_directory_input)
         dir_input_layout.addWidget(self.select_dir_button)
         
-        dir_container.addWidget(self.download_dir_label)
-        dir_container.addLayout(dir_input_layout)
+        dir_layout.addLayout(dir_input_layout)
+        dir_group.setLayout(dir_layout)
+        main_layout.addWidget(dir_group)
 
-        # --- 日志区域 ---
-        log_container = QVBoxLayout()
-        log_container.setSpacing(5)
-        log_label = QLabel("下载日志")
+        # === 日志区域 ===
+        log_group = QGroupBox("下载日志")
+        log_layout = QVBoxLayout()
+        log_layout.setSpacing(5)
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
         self.log_output.setPlaceholderText("等待任务开始...")
-        log_container.addWidget(log_label)
-        log_container.addWidget(self.log_output)
+        log_layout.addWidget(self.log_output)
+        log_group.setLayout(log_layout)
+        main_layout.addWidget(log_group)
 
-        # 添加所有布局
-        main_layout.addLayout(url_container)
-        main_layout.addLayout(options_layout)
-        main_layout.addLayout(advanced_layout)
-        main_layout.addLayout(playlist_layout)
-        main_layout.addLayout(dir_container)
-        main_layout.addLayout(log_container)
+        # 设置所有 QGroupBox 标题字体更大
+        groupbox_title_font = QFont()
+        groupbox_title_font.setPointSize(12)
+        groupbox_title_font.setBold(True)
+        
+        for group in [url_group, download_options_group, playlist_group, dir_group, log_group]:
+            group.setStyleSheet(f"""
+                QGroupBox {{
+                    border: 1px solid #555555;
+                    border-radius: 6px;
+                    margin-top: 12px;
+                    padding-top: 10px;
+                    font-weight: 600;
+                    color: #e0e0e0;
+                }}
+                QGroupBox::title {{
+                    subcontrol-origin: margin;
+                    subcontrol-position: top left;
+                    left: 12px;
+                    padding: 0 8px 0 8px;
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: #e0e0e0;
+                }}
+            """)
 
     def _setup_toolbar(self) -> None:
         """设置工具栏及其动作"""

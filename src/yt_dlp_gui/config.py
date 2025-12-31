@@ -35,7 +35,7 @@ FORMAT_PRESETS: Final[dict[str, str]] = {
 # 窗口设置
 WINDOW_TITLE: Final[str] = "Yt-dlp GUI"
 WINDOW_MIN_WIDTH: Final[int] = 800
-WINDOW_MIN_HEIGHT: Final[int] = 600
+WINDOW_MIN_HEIGHT: Final[int] = 800
 
 # 进度条
 PROGRESS_BAR_MAX_WIDTH: Final[int] = 200
