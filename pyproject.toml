@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yt-dlp-qt-gui"
-version = "0.1.0"
+version = "0.2.0"
 description = "现代化视频下载工具，基于 yt-dlp 和 PySide6"
 readme = "README.md"
 requires-python = ">=3.12"
