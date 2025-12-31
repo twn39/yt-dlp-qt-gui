@@ -3,7 +3,7 @@ from typing import Any
 from PySide6.QtCore import Signal, QObject, Slot
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled, DownloadError
-from .config import DEFAULT_FORMAT, OUTPUT_TEMPLATE, NO_PLAYLIST, NO_PROGRESS
+from .config import DEFAULT_FORMAT, OUTPUT_TEMPLATE, NO_PROGRESS
 
 
 class DownloadWorker(QObject):
@@ -22,6 +22,10 @@ class DownloadWorker(QObject):
         proxy: str | None = None,
         concurrent_fragments: int | None = None,
         write_subs: bool = False,
+        download_playlist: bool = False,
+        playlist_items: str | None = None,
+        playlist_random: bool = False,
+        max_downloads: int | None = None,
     ) -> None:
         """
         初始化下载工作器
@@ -34,6 +38,10 @@ class DownloadWorker(QObject):
             proxy: HTTP/SOCKS 代理地址
             concurrent_fragments: 并发下载片段数
             write_subs: 是否下载字幕
+            download_playlist: 是否下载播放列表
+            playlist_items: 播放列表项目范围 (例如: "1-5,7,10")
+            playlist_random: 是否随机顺序下载播放列表
+            max_downloads: 最大下载数
         """
         super().__init__()
         self.url = url
@@ -43,6 +51,10 @@ class DownloadWorker(QObject):
         self.proxy = proxy
         self.concurrent_fragments = concurrent_fragments
         self.write_subs = write_subs
+        self.download_playlist = download_playlist
+        self.playlist_items = playlist_items
+        self.playlist_random = playlist_random
+        self.max_downloads = max_downloads
         self._is_cancelled = False
 
     def _progress_hook(self, d: dict[str, Any]) -> None:
@@ -83,7 +95,7 @@ class DownloadWorker(QObject):
             "format": self.format_preset,
             "outtmpl": os.path.join(self.download_path, OUTPUT_TEMPLATE),
             "progress_hooks": [self._progress_hook],
-            "noplaylist": NO_PLAYLIST,
+            "noplaylist": not self.download_playlist,  # 根据用户选择决定是否下载播放列表
             "logger": self.YtdlpLogger(self.log_message),
             "noprogress": NO_PROGRESS,
             "merge_output_format": "mp4",  # 强制合并为 mp4 格式，确保兼容性
@@ -115,6 +127,24 @@ class DownloadWorker(QObject):
             options["subtitleslangs"] = ["all"]  # 下载所有可用语言的字幕
         else:
             self.log_message.emit("不下载字幕")
+
+        # 添加播放列表下载设置
+        if self.download_playlist:
+            self.log_message.emit("启用播放列表下载")
+            # 添加播放列表项目范围
+            if self.playlist_items:
+                self.log_message.emit(f"播放列表项目范围: {self.playlist_items}")
+                options["playlist_items"] = self.playlist_items
+            # 添加随机顺序选项
+            if self.playlist_random:
+                self.log_message.emit("启用随机顺序下载")
+                options["playlist_random"] = True
+            # 添加最大下载数限制
+            if self.max_downloads is not None:
+                self.log_message.emit(f"最大下载数: {self.max_downloads}")
+                options["max_downloads"] = self.max_downloads
+        else:
+            self.log_message.emit("不下载播放列表")
 
         # 合并用户提供的选项 (如果将来有的话)
         options.update(self.ydl_opts)

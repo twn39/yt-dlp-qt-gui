@@ -42,6 +42,10 @@ from .config import (
     ICON_COLOR_ACTIVE_CANCEL,
     PROGRESS_BAR_MAX_WIDTH,
     FORMAT_PRESETS,
+    DEFAULT_DOWNLOAD_PLAYLIST,
+    DEFAULT_PLAYLIST_ITEMS,
+    DEFAULT_PLAYLIST_RANDOM,
+    DEFAULT_MAX_DOWNLOADS,
 )
 
 
@@ -265,6 +269,53 @@ class MainWindow(QMainWindow):
         advanced_layout.addLayout(concurrent_container, 1)
         advanced_layout.addLayout(subs_container, 1)
 
+        # --- 播放列表选项 ---
+        playlist_layout = QHBoxLayout()
+        playlist_layout.setSpacing(20)
+
+        # 下载播放列表开关
+        playlist_download_container = QVBoxLayout()
+        playlist_download_container.setSpacing(5)
+        self.playlist_download_label = QLabel("播放列表")
+        self.download_playlist_checkbox = QCheckBox("下载播放列表")
+        self.download_playlist_checkbox.setChecked(DEFAULT_DOWNLOAD_PLAYLIST)
+        self.download_playlist_checkbox.setToolTip("下载整个播放列表而不是单个视频")
+        playlist_download_container.addWidget(self.playlist_download_label)
+        playlist_download_container.addWidget(self.download_playlist_checkbox)
+
+        # 播放列表项目范围
+        playlist_items_container = QVBoxLayout()
+        playlist_items_container.setSpacing(5)
+        self.playlist_items_label = QLabel("项目范围")
+        self.playlist_items_input = QLineEdit()
+        self.playlist_items_input.setPlaceholderText("例如: 1-5,7,10 (留空下载全部)")
+        self.playlist_items_input.setText(DEFAULT_PLAYLIST_ITEMS)
+        playlist_items_container.addWidget(self.playlist_items_label)
+        playlist_items_container.addWidget(self.playlist_items_input)
+
+        # 随机顺序和最大下载数
+        playlist_advanced_container = QVBoxLayout()
+        playlist_advanced_container.setSpacing(5)
+        
+        # 随机顺序复选框
+        self.playlist_random_checkbox = QCheckBox("随机顺序")
+        self.playlist_random_checkbox.setChecked(DEFAULT_PLAYLIST_RANDOM)
+        self.playlist_random_checkbox.setToolTip("随机顺序下载播放列表中的视频")
+        
+        # 最大下载数输入
+        self.max_downloads_label = QLabel("最大下载数")
+        self.max_downloads_input = QLineEdit()
+        self.max_downloads_input.setPlaceholderText("例如: 10 (留空无限制)")
+        self.max_downloads_input.setText(DEFAULT_MAX_DOWNLOADS)
+        
+        playlist_advanced_container.addWidget(self.playlist_random_checkbox)
+        playlist_advanced_container.addWidget(self.max_downloads_label)
+        playlist_advanced_container.addWidget(self.max_downloads_input)
+
+        playlist_layout.addLayout(playlist_download_container, 1)
+        playlist_layout.addLayout(playlist_items_container, 1)
+        playlist_layout.addLayout(playlist_advanced_container, 1)
+
         # --- 下载目录 ---
         dir_container = QVBoxLayout()
         dir_container.setSpacing(5)
@@ -295,6 +346,7 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(url_container)
         main_layout.addLayout(options_layout)
         main_layout.addLayout(advanced_layout)
+        main_layout.addLayout(playlist_layout)
         main_layout.addLayout(dir_container)
         main_layout.addLayout(log_container)
 
@@ -489,6 +541,24 @@ class MainWindow(QMainWindow):
         # 获取字幕下载选项
         write_subs = self.write_subs_checkbox.isChecked()
 
+        # 获取播放列表选项
+        download_playlist = self.download_playlist_checkbox.isChecked()
+        playlist_items = self.playlist_items_input.text().strip()
+        playlist_random = self.playlist_random_checkbox.isChecked()
+        max_downloads_text = self.max_downloads_input.text().strip()
+        
+        # 解析最大下载数
+        max_downloads = None
+        if max_downloads_text:
+            try:
+                max_downloads = int(max_downloads_text)
+                if max_downloads <= 0:
+                    self._append_log("警告: 最大下载数必须大于 0，将使用默认值")
+                    max_downloads = None
+            except ValueError:
+                self._append_log(f"警告: 最大下载数 '{max_downloads_text}' 格式不正确，将使用默认值")
+                max_downloads = None
+
         # 获取下载路径
         download_path = self.download_directory_input.text().strip()
         if not download_path or not os.path.isdir(download_path):
@@ -522,6 +592,10 @@ class MainWindow(QMainWindow):
             proxy=proxy_address if proxy_address else None,
             concurrent_fragments=concurrent_fragments,
             write_subs=write_subs,
+            download_playlist=download_playlist,
+            playlist_items=playlist_items if playlist_items else None,
+            playlist_random=playlist_random,
+            max_downloads=max_downloads,
         )
         self.current_worker.moveToThread(self.current_thread)
 

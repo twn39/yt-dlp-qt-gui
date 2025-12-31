@@ -57,8 +57,21 @@ STYLESHEET_FILE: Final[str] = "dark_theme.qss"
 # yt-dlp 选项
 # =====================
 
-# 默认不下载播放列表
-NO_PLAYLIST: Final[bool] = True
-
 # 禁用 yt-dlp 自带的控制台进度条
 NO_PROGRESS: Final[bool] = True
+
+# =====================
+# 播放列表选项默认值
+# =====================
+
+# 默认不下载播放列表（用户可以通过 UI 启用）
+DEFAULT_DOWNLOAD_PLAYLIST: Final[bool] = False
+
+# 默认播放列表项目范围（空表示下载所有）
+DEFAULT_PLAYLIST_ITEMS: Final[str] = ""
+
+# 默认不随机顺序下载播放列表
+DEFAULT_PLAYLIST_RANDOM: Final[bool] = False
+
+# 默认最大下载数（空表示无限制）
+DEFAULT_MAX_DOWNLOADS: Final[str] = ""
