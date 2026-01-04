@@ -29,3 +29,9 @@ where = ["src"]
 [tool.setuptools.package-data]
 yt_dlp_gui = ["*.qss"]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.14.10",
+    "ty>=0.0.8",
+]
+

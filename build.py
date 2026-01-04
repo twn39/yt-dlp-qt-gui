@@ -46,7 +46,7 @@ def build():
         print("=" * 50)
         print("✓ 打包完成！")
         print("=" * 50)
-        print(f"可执行文件位于: dist/yt-dlp-qt-gui")
+        print("可执行文件位于: dist/yt-dlp-qt-gui")
         print()
         print("注意事项:")
         print("- 打包后的应用仍需要系统安装 FFmpeg")

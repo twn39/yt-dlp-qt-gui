@@ -1,6 +1,6 @@
 import os
 from typing import Any
-from PySide6.QtCore import Signal, QObject, Slot
+from PySide6.QtCore import Signal, SignalInstance, QObject, Slot
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled, DownloadError
 from .config import DEFAULT_FORMAT, OUTPUT_TEMPLATE, NO_PROGRESS
@@ -168,7 +168,7 @@ class DownloadWorker(QObject):
                         return
 
                     try:
-                        info_dict = ydl.extract_info(self.url, download=True)
+                        ydl.extract_info(self.url, download=True)
 
                         if self._is_cancelled:
                             self.log_message.emit("下载过程中被取消")
@@ -239,7 +239,7 @@ class DownloadWorker(QObject):
     class YtdlpLogger:
         """yt-dlp 日志记录器，过滤并转发日志消息到 Qt 信号"""
 
-        def __init__(self, log_signal: Signal) -> None:
+        def __init__(self, log_signal: SignalInstance) -> None:
             self.log_signal = log_signal
 
         def debug(self, msg: str) -> None:

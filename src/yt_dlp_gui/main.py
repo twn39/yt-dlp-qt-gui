@@ -28,7 +28,6 @@ from PySide6.QtCore import (
     QSize,
     QStandardPaths,
     QMimeData,
-    Qt,
 )
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard, QIcon, QFont
 from .worker import DownloadWorker
@@ -334,7 +333,7 @@ class MainWindow(QMainWindow):
         groupbox_title_font.setBold(True)
         
         for group in [url_group, download_options_group, playlist_group, dir_group, log_group]:
-            group.setStyleSheet(f"""
+            group.setStyleSheet("""
                 QGroupBox {{
                     border: 1px solid #555555;
                     border-radius: 6px;
