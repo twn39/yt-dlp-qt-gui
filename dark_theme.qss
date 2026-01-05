@@ -15,24 +15,39 @@ QMainWindow {
 
 /* ToolBar */
 QToolBar {
-    background-color: #323232; /* Match window background */
+    background-color: #323232;
+    border: none;
     border-bottom: 1px solid #282828;
-    padding: 2px 10px; /* Reduced vertical padding */
+    padding: 4px 10px;
     spacing: 12px;
+}
+
+QToolBar::handle {
+    image: none;
+    background-color: transparent;
+    width: 6px;
+    margin: 4px 2px;
+    /* Simulate 3 vertical dots using linear gradients */
+    background-image: 
+        radial-gradient(circle, #555 1px, transparent 1.5px),
+        radial-gradient(circle, #555 1px, transparent 1.5px),
+        radial-gradient(circle, #555 1px, transparent 1.5px);
+    background-position: center 4px, center center, center calc(100% - 4px);
+    background-repeat: no-repeat;
 }
 
 QToolBar::separator {
     width: 1px;
     background-color: #444444;
-    margin: 5px 8px;
+    margin: 6px 8px;
 }
 
 /* ToolBar Buttons */
 QToolBar QToolButton {
     background-color: transparent;
-    border: 1px solid transparent;
-    padding: 3px; /* Reduced padding */
-    border-radius: 5px;
+    border: none;
+    padding: 6px;
+    border-radius: 6px;
 }
 
 QToolBar QToolButton:hover {

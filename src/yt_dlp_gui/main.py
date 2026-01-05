@@ -462,11 +462,12 @@ class MainWindow(QMainWindow):
 
     def _setup_toolbar(self) -> None:
         """设置工具栏及其动作"""
-        toolbar = QToolBar("主工具栏")
-        toolbar.setMovable(True)
-        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
-        toolbar.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
-        self.addToolBar(toolbar)
+        # 第一组工具栏：操作
+        self.main_toolbar = QToolBar("操作工具栏")
+        self.main_toolbar.setMovable(True)
+        self.main_toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self.main_toolbar.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
+        self.addToolBar(self.main_toolbar)
 
         # 下载按钮
         download_icon = qta.icon(
@@ -475,7 +476,7 @@ class MainWindow(QMainWindow):
         self.download_action = QAction(download_icon, "下载", self)
         self.download_action.setStatusTip("开始下载输入的 URL (Enter)")
         self.download_action.triggered.connect(self._start_download)
-        toolbar.addAction(self.download_action)
+        self.main_toolbar.addAction(self.download_action)
 
         # 粘贴 URL 按钮
         paste_icon = qta.icon(
@@ -484,9 +485,7 @@ class MainWindow(QMainWindow):
         paste_action = QAction(paste_icon, "粘贴 URL", self)
         paste_action.setStatusTip("从剪贴板粘贴 URL")
         paste_action.triggered.connect(self._paste_url_from_clipboard)
-        toolbar.addAction(paste_action)
-
-        toolbar.addSeparator()
+        self.main_toolbar.addAction(paste_action)
 
         # 清除日志按钮
         clear_icon = qta.icon(
@@ -495,7 +494,7 @@ class MainWindow(QMainWindow):
         clear_action = QAction(clear_icon, "清除日志", self)
         clear_action.setStatusTip("清除下方的日志输出")
         clear_action.triggered.connect(self._clear_log)
-        toolbar.addAction(clear_action)
+        self.main_toolbar.addAction(clear_action)
 
         # 取消按钮
         cancel_icon = qta.icon(
@@ -505,7 +504,32 @@ class MainWindow(QMainWindow):
         self.cancel_action.setStatusTip("尝试取消当前下载")
         self.cancel_action.triggered.connect(self._cancel_download)
         self.cancel_action.setEnabled(False)
-        toolbar.addAction(self.cancel_action)
+        self.main_toolbar.addAction(self.cancel_action)
+
+        # 第二组工具栏：系统
+        self.sys_toolbar = QToolBar("系统工具栏")
+        self.sys_toolbar.setMovable(True)
+        self.sys_toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self.sys_toolbar.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
+        self.addToolBar(self.sys_toolbar)
+
+        # 关于按钮
+        about_icon = qta.icon(
+            "fa5s.info-circle", color=ICON_COLOR, color_active=ICON_COLOR_ACTIVE_ACCENT
+        )
+        about_action = QAction(about_icon, "关于", self)
+        about_action.setStatusTip("关于此应用程序")
+        about_action.triggered.connect(self._show_about)
+        self.sys_toolbar.addAction(about_action)
+
+        # 退出按钮
+        exit_icon = qta.icon(
+            "fa5s.power-off", color=ICON_COLOR, color_active=ICON_COLOR_ACTIVE_DELETE
+        )
+        exit_action = QAction(exit_icon, "退出", self)
+        exit_action.setStatusTip("退出应用程序")
+        exit_action.triggered.connect(self.close)
+        self.sys_toolbar.addAction(exit_action)
 
     def _setup_status_bar(self) -> None:
         """设置状态栏"""
@@ -845,6 +869,18 @@ class MainWindow(QMainWindow):
     def _clear_log(self) -> None:
         """清除日志区域内容"""
         self.log_output.clear()
+
+    @Slot()
+    def _show_about(self) -> None:
+        """显示关于对话框"""
+        QMessageBox.about(
+            self,
+            "关于 Yt-dlp GUI",
+            f"<h3>{WINDOW_TITLE}</h3>"
+            "<p>基于 PySide6 和 yt-dlp 的视频下载工具。</p>"
+            "<p>版本: 1.0.0</p>"
+            "<p>设计理念: 简洁、高效、美观。</p>",
+        )
 
     @Slot()
     def _cancel_download(self) -> None:
