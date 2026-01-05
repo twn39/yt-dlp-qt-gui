@@ -224,9 +224,19 @@ class MainWindow(QMainWindow):
         url_group = QGroupBox("视频链接")
         url_group_layout = QVBoxLayout()
         url_group_layout.setSpacing(5)
-        self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("在此粘贴视频链接，或拖拽 URL 到此窗口...")
-        self.url_input.returnPressed.connect(self._start_download)
+        self.url_input = QTextEdit()
+        self.url_input.setPlaceholderText(
+            "在此粘贴视频链接，每行一个。\n支持拖拽 URL 或文本到此窗口...\n(Cmd+Enter 开始下载)"
+        )
+        self.url_input.setAcceptRichText(False)
+        self.url_input.setMinimumHeight(80)
+        self.url_input.setMaximumHeight(150)
+        
+        # 添加快捷键支持 (Ctrl/Cmd + Enter 开始下载)
+        from PySide6.QtGui import QKeySequence, QShortcut
+        start_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self.url_input)
+        start_shortcut.activated.connect(self._start_download)
+        
         url_group_layout.addWidget(self.url_input)
         url_group.setLayout(url_group_layout)
         main_layout.addWidget(url_group)
@@ -575,7 +585,11 @@ class MainWindow(QMainWindow):
             url = mime_data.text().strip()
 
         if url:
-            self.url_input.setText(url)
+            current_text = self.url_input.toPlainText().strip()
+            if current_text:
+                self.url_input.setPlainText(f"{current_text}\n{url}")
+            else:
+                self.url_input.setPlainText(url)
             self._append_log(f"已添加拖拽的 URL: {url}")
             self.status_label.setText("就绪")
             event.acceptProposedAction()
@@ -591,8 +605,12 @@ class MainWindow(QMainWindow):
         clipboard: QClipboard = QApplication.clipboard()
         text = clipboard.text().strip()
         if text:
-            self.url_input.setText(text)
-            self._append_log(f"已从剪贴板粘贴: {text}")
+            current_text = self.url_input.toPlainText().strip()
+            if current_text:
+                self.url_input.setPlainText(f"{current_text}\n{text}")
+            else:
+                self.url_input.setPlainText(text)
+            self._append_log(f"已从剪贴板粘贴/添加: {text[:50]}...")
         else:
             self._append_log("剪贴板中没有文本内容")
 
@@ -644,8 +662,14 @@ class MainWindow(QMainWindow):
         # 确保上次下载的资源已清理
         self._cleanup_previous_download()
 
-        url = self.url_input.text().strip()
-        if not url:
+        # 获取并解析 URL 列表
+        content = self.url_input.toPlainText().strip()
+        if not content:
+            QMessageBox.warning(self, "错误", "请输入有效的视频 URL。")
+            return
+
+        urls = [line.strip() for line in content.splitlines() if line.strip()]
+        if not urls:
             QMessageBox.warning(self, "错误", "请输入有效的视频 URL。")
             return
 
@@ -723,7 +747,7 @@ class MainWindow(QMainWindow):
         # 创建工作线程
         self.current_thread = QThread(self)
         self.current_worker = DownloadWorker(
-            url=url,
+            url=urls,
             download_path=download_path,
             format_preset=format_preset,
             proxy=proxy_address if proxy_address else None,
@@ -744,7 +768,8 @@ class MainWindow(QMainWindow):
         self.current_thread.started.connect(self.current_worker.run)
 
         # 开始下载
-        self._append_log(f"开始下载: {url}")
+        self._append_log(f"开始批量下载，共 {len(urls)} 个任务")
+        self._append_log(f"第一条 URL: {urls[0]}")
         self._append_log(f"格式: {format_name}")
         self.current_thread.start()
 

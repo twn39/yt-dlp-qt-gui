@@ -2,7 +2,7 @@ import os
 from typing import Any
 from PySide6.QtCore import Signal, SignalInstance, QObject, Slot
 import yt_dlp
-from yt_dlp.utils import DownloadCancelled, DownloadError
+from yt_dlp.utils import DownloadCancelled
 from .config import DEFAULT_FORMAT, OUTPUT_TEMPLATE, NO_PROGRESS
 
 
@@ -15,7 +15,7 @@ class DownloadWorker(QObject):
 
     def __init__(
         self,
-        url: str,
+        url: str | list[str],
         download_path: str = ".",
         format_preset: str | None = None,
         ydl_opts: dict[str, Any] | None = None,
@@ -31,7 +31,7 @@ class DownloadWorker(QObject):
         初始化下载工作器
 
         Args:
-            url: 要下载的视频 URL
+            url: 要下载的视频 URL 或 URL 列表
             download_path: 下载保存路径
             format_preset: 格式预设 (使用 config.py 中的格式字符串)
             ydl_opts: 额外的 yt-dlp 选项
@@ -44,7 +44,10 @@ class DownloadWorker(QObject):
             max_downloads: 最大下载数
         """
         super().__init__()
-        self.url = url
+        if isinstance(url, str):
+            self.urls = [url]
+        else:
+            self.urls = url
         self.download_path = download_path
         self.format_preset = format_preset or DEFAULT_FORMAT
         self.ydl_opts = ydl_opts if ydl_opts else {}
@@ -68,13 +71,13 @@ class DownloadWorker(QObject):
             self.progress.emit(d)
         elif d["status"] == "finished":
             if "filename" in d:
-                filename = d.get('filename', '')
-                self.log_message.emit(
-                    f"文件下载完成: {os.path.basename(filename)}"
-                )
+                filename = d.get("filename", "")
+                self.log_message.emit(f"文件下载完成: {os.path.basename(filename)}")
                 # 只有当下载的是视频文件（非字幕文件）时才发送合并状态
-                # 字幕文件通常以 .srt, .vtt, .ass 等结尾
-                if filename and not any(filename.endswith(ext) for ext in ['.srt', '.vtt', '.ass', '.ssa', '.json']):
+                if filename and not any(
+                    filename.endswith(ext)
+                    for ext in [".srt", ".vtt", ".ass", ".ssa", ".json"]
+                ):
                     self.progress.emit({"status": "merging"})
             else:
                 self.log_message.emit(
@@ -86,149 +89,99 @@ class DownloadWorker(QObject):
     @Slot()
     def run(self) -> None:
         """执行下载"""
-        if not self.url:
-            self.finished.emit(False, "URL 不能为空")
+        if not self.urls:
+            self.finished.emit(False, "URL 列表不能为空")
             return
 
         # 使用配置文件中的常量
-        options: Any = {
+        base_options: Any = {
             "format": self.format_preset,
             "outtmpl": os.path.join(self.download_path, OUTPUT_TEMPLATE),
             "progress_hooks": [self._progress_hook],
-            "noplaylist": not self.download_playlist,  # 根据用户选择决定是否下载播放列表
+            "noplaylist": not self.download_playlist,
             "logger": self.YtdlpLogger(self.log_message),
             "noprogress": NO_PROGRESS,
-            "merge_output_format": "mp4",  # 强制合并为 mp4 格式，确保兼容性
+            "merge_output_format": "mp4",
             "allow_unplayable_formats": False,
             "extract_flat": False,
-            "remote_components": ["ejs:github"],  # 启用远程组件以解决 JS challenge (n-sig)
-            "nocheckcertificate": True,  # 禁用 SSL 证书验证，解决部分环境下的 SSL 错误
-            "socket_timeout": 30,  # 设置超时时间，防止连接僵死
-            "retries": 10,  # 增加重试次数
+            "remote_components": ["ejs:github"],
+            "nocheckcertificate": True,
+            "socket_timeout": 30,
+            "retries": 10,
             "fragment_retries": 10,
         }
 
         # 添加代理设置
         if self.proxy:
             self.log_message.emit(f"使用代理: {self.proxy}")
-            options["proxy"] = self.proxy
+            base_options["proxy"] = self.proxy
         else:
             self.log_message.emit("未使用代理")
 
         # 添加并发片段设置
         if self.concurrent_fragments is not None:
             self.log_message.emit(f"并发片段数: {self.concurrent_fragments}")
-            options["concurrent_fragments"] = self.concurrent_fragments
+            base_options["concurrent_fragments"] = self.concurrent_fragments
 
         # 添加字幕下载设置
         if self.write_subs:
             self.log_message.emit("启用字幕下载")
-            options["writesubtitles"] = True
-            options["subtitleslangs"] = ["all"]  # 下载所有可用语言的字幕
+            base_options["writesubtitles"] = True
+            base_options["subtitleslangs"] = ["all"]
         else:
             self.log_message.emit("不下载字幕")
 
         # 添加播放列表下载设置
         if self.download_playlist:
             self.log_message.emit("启用播放列表下载")
-            # 添加播放列表项目范围
             if self.playlist_items:
                 self.log_message.emit(f"播放列表项目范围: {self.playlist_items}")
-                options["playlist_items"] = self.playlist_items
-            # 添加随机顺序选项
+                base_options["playlist_items"] = self.playlist_items
             if self.playlist_random:
                 self.log_message.emit("启用随机顺序下载")
-                options["playlist_random"] = True
-            # 添加最大下载数限制
+                base_options["playlist_random"] = True
             if self.max_downloads is not None:
                 self.log_message.emit(f"最大下载数: {self.max_downloads}")
-                options["max_downloads"] = self.max_downloads
+                base_options["max_downloads"] = self.max_downloads
         else:
             self.log_message.emit("不下载播放列表")
 
-        # 合并用户提供的选项 (如果将来有的话)
-        options.update(self.ydl_opts)
+        base_options.update(self.ydl_opts)
 
-        try:
-            self.log_message.emit(f"开始下载: {self.url}")
-            self.log_message.emit(f"下载目录: {os.path.abspath(self.download_path)}")
-            # 记录最终使用的选项，包括代理
-            self.log_message.emit(f"使用选项: {options}")
+        total_urls = len(self.urls)
+        success_count = 0
+        error_messages = []
 
-            # 使用 try-finally 确保即使出错也能尝试发送 finished 信号
-            download_success = False
-            final_message = "下载未知状态结束"
+        self.log_message.emit(f"开始批量下载任务，共 {total_urls} 个链接")
+        self.log_message.emit(f"下载目录: {os.path.abspath(self.download_path)}")
 
+        for i, url in enumerate(self.urls, 1):
+            if self._is_cancelled:
+                self.log_message.emit("批量下载任务已被用户取消")
+                break
+
+            self.log_message.emit(f"[{i}/{total_urls}] 正在处理: {url}")
+            
             try:
-                with yt_dlp.YoutubeDL(options) as ydl:
-                    # 检查是否在初始化后就被取消了
-                    if self._is_cancelled:
-                        self.log_message.emit("下载在开始前被取消")
-                        final_message = "下载被用户取消"
-                        return
-
-                    try:
-                        ydl.extract_info(self.url, download=True)
-
-                        if self._is_cancelled:
-                            self.log_message.emit("下载过程中被取消")
-                            final_message = "下载被用户取消"
-                            return
-
-                        download_success = True
-                        final_message = "下载任务完成"
-
-                    # 捕捉用户取消异常
-                    except DownloadCancelled:
-                        self.log_message.emit("下载已被用户取消")
-                        final_message = "下载被用户取消"
-                        download_success = False
-
-                    # 捕捉 DownloadError
-                    except DownloadError as e:
-                        if self._is_cancelled:
-                            self.log_message.emit("下载因取消操作而中断")
-                            final_message = "下载被用户取消"
-                        else:
-                            self.log_message.emit(f"yt-dlp 下载错误: {e}")
-                            final_message = f"下载失败: {e}"
-                        download_success = False
-
-                    # 捕捉其他可能的 yt-dlp 或网络相关的异常
-                    except Exception as e:
-                        if self._is_cancelled:
-                            self.log_message.emit(
-                                f"下载因取消操作而中断 (可能伴随意外错误: {e})"
-                            )
-                            final_message = "下载被用户取消"
-                        else:
-                            self.log_message.emit(f"yt-dlp 执行时发生意外错误: {e}")
-                            final_message = f"意外错误: {e}"
-                        download_success = False  # 明确标记失败
-
-            # 捕捉 YoutubeDL 初始化时的错误
+                with yt_dlp.YoutubeDL(base_options) as ydl:
+                    ydl.extract_info(url, download=True)
+                    success_count += 1
+            except DownloadCancelled:
+                self.log_message.emit(f"[{i}/{total_urls}] 已取消")
+                break
             except Exception as e:
-                self.log_message.emit(f"初始化 YoutubeDL 时出错: {e}")
-                final_message = f"初始化失败: {e}"
-                download_success = False  # 明确标记失败
+                self.log_message.emit(f"[{i}/{total_urls}] 下载出错: {e}")
+                error_messages.append(f"URL {url}: {e}")
 
-            finally:
-                # 确保无论如何都发送 finished 信号（除非线程已被强制终止）
-                # 只有在没有被取消的情况下，才根据 download_success 判断最终状态
-                # 如果被取消了，总是发送 False (表示未成功完成)
-                if not self._is_cancelled:
-                    self.finished.emit(download_success, final_message)
-                else:
-                    # 如果是取消导致的结束，发送 False 和取消信息
-                    self.finished.emit(False, "下载被用户取消")
-
-        except Exception as e:
-            # 捕捉 run 方法中其他未预料的错误
-            self.log_message.emit(f"DownloadWorker.run 发生严重错误: {e}")
-            if not self._is_cancelled:
-                self.finished.emit(False, f"工作线程运行时错误: {e}")
-            else:
-                self.finished.emit(False, "下载被用户取消 (伴随运行时错误)")
+        final_success = success_count == total_urls
+        if self._is_cancelled:
+            self.finished.emit(False, f"已取消。完成了 {success_count}/{total_urls}")
+        elif final_success:
+            self.finished.emit(True, f"全部成功！共完成 {success_count} 个任务")
+        else:
+            self.finished.emit(
+                False, f"任务结束。成功: {success_count}, 失败: {len(error_messages)}"
+            )
 
     def cancel(self) -> None:
         """请求取消下载"""
