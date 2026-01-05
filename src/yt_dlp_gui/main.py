@@ -28,8 +28,10 @@ from PySide6.QtCore import (
     QSize,
     QStandardPaths,
     QMimeData,
+    Qt,
+    QRect,
 )
-from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard, QIcon, QFont
+from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard, QIcon, QFont, QPainter, QColor
 from .worker import DownloadWorker
 from .config import (
     WINDOW_TITLE,
@@ -54,11 +56,11 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
     """加载 QSS 样式文件"""
     # 尝试多个可能的路径
     possible_paths = []
-    
+
     # PyInstaller 打包后的临时目录路径
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # 在 PyInstaller 打包的环境中运行
-        if hasattr(sys, '_MEIPASS'):
+        if hasattr(sys, "_MEIPASS"):
             # 文件被解压到 _MEIPASS 目录
             possible_paths.append(os.path.join(sys._MEIPASS, filename))
         # 可执行文件所在目录
@@ -66,9 +68,15 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
     else:
         # 开发环境
         possible_paths.append(filename)  # 相对于当前工作目录
-        possible_paths.append(os.path.join(os.path.dirname(__file__), "..", "..", filename))  # src 布局
-        possible_paths.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", filename))
-    
+        possible_paths.append(
+            os.path.join(os.path.dirname(__file__), "..", "..", filename)
+        )  # src 布局
+        possible_paths.append(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", "..", filename
+            )
+        )
+
     for filepath in possible_paths:
         if os.path.exists(filepath):
             try:
@@ -77,7 +85,7 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
             except Exception as e:
                 print(f"加载样式文件时出错: {e}")
                 continue
-    
+
     print(f"警告: 样式文件未找到，尝试的路径: {possible_paths}")
     return None
 
@@ -86,11 +94,11 @@ def load_icon(filename: str = "src/yt_dlp_gui/resources/logo.jpg") -> QIcon | No
     """加载图标文件"""
     # 尝试多个可能的路径
     possible_paths = []
-    
+
     # PyInstaller 打包后的临时目录路径
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # 在 PyInstaller 打包的环境中运行
-        if hasattr(sys, '_MEIPASS'):
+        if hasattr(sys, "_MEIPASS"):
             # 文件被解压到 _MEIPASS 目录
             possible_paths.append(os.path.join(sys._MEIPASS, filename))
         # 可执行文件所在目录
@@ -98,8 +106,12 @@ def load_icon(filename: str = "src/yt_dlp_gui/resources/logo.jpg") -> QIcon | No
     else:
         # 开发环境
         possible_paths.append(filename)  # 相对于当前工作目录
-        possible_paths.append(os.path.join(os.path.dirname(__file__), "resources", os.path.basename(filename)))
-    
+        possible_paths.append(
+            os.path.join(
+                os.path.dirname(__file__), "resources", os.path.basename(filename)
+            )
+        )
+
     for filepath in possible_paths:
         if os.path.exists(filepath):
             try:
@@ -107,9 +119,57 @@ def load_icon(filename: str = "src/yt_dlp_gui/resources/logo.jpg") -> QIcon | No
             except Exception as e:
                 print(f"加载图标文件时出错: {e}")
                 continue
-    
+
     print(f"警告: 图标文件未找到，尝试的路径: {possible_paths}")
     return None
+
+
+class Switch(QCheckBox):
+    """自定义切换开关组件"""
+
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMinimumHeight(24)
+        self.setMinimumWidth(80)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # 切换开关的尺寸
+        tw, th = 36, 18
+        ty = (self.height() - th) / 2
+
+        # 绘制轨道
+        track_rect = QRect(0, int(ty), tw, th)
+        if self.isChecked():
+            track_color = QColor("#007acc")
+            thumb_pos = tw - th + 2
+        else:
+            track_color = QColor("#555555")
+            thumb_pos = 2
+
+        painter.setBrush(track_color)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(track_rect, th / 2, th / 2)
+
+        # 绘制滑块
+        thumb_rect = QRect(thumb_pos, int(ty) + 2, th - 4, th - 4)
+        painter.setBrush(QColor("#ffffff"))
+        painter.drawEllipse(thumb_rect)
+
+        # 绘制文本
+        if self.text():
+            painter.setPen(QColor("#dcdcdc"))
+            painter.drawText(
+                tw + 10,
+                0,
+                self.width() - tw - 10,
+                self.height(),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                self.text(),
+            )
 
 
 class MainWindow(QMainWindow):
@@ -157,8 +217,8 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setSpacing(15)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(15, 10, 15, 10)
 
         # === URL 输入区域 ===
         url_group = QGroupBox("视频链接")
@@ -177,10 +237,19 @@ class MainWindow(QMainWindow):
         download_options_layout.setSpacing(10)
         download_options_layout.setContentsMargins(10, 10, 10, 10)
 
+        # 设置列伸缩因子：标签列固定，输入框列可伸缩
+        download_options_layout.setColumnStretch(0, 0)  # 标签列不伸缩
+        download_options_layout.setColumnStretch(1, 1)  # 输入框列可伸缩
+        download_options_layout.setColumnStretch(2, 0)  # 标签列不伸缩
+        download_options_layout.setColumnStretch(3, 1)  # 输入框列可伸缩
+
         # 格式选择
         format_label = QLabel("下载格式:")
+        format_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         self.format_combo = QComboBox()
-        
+
         # 为每个格式预设添加图标
         format_icons = {
             "最佳质量 (MP4)": qta.icon("fa5s.star", color=ICON_COLOR),
@@ -191,19 +260,21 @@ class MainWindow(QMainWindow):
             "仅音频 (最佳)": qta.icon("fa5s.music", color=ICON_COLOR),
             "仅音频 (MP3)": qta.icon("fa5s.headphones", color=ICON_COLOR),
         }
-        
+
         # 添加带图标的格式选项
         for format_name in FORMAT_PRESETS.keys():
-            icon = format_icons.get(format_name, qta.icon("fa5s.file", color=ICON_COLOR))
+            icon = format_icons.get(
+                format_name, qta.icon("fa5s.file", color=ICON_COLOR)
+            )
             self.format_combo.addItem(icon, format_name)
-        
+
         self.format_combo.setCurrentIndex(0)  # 默认选择第一个
         self.format_combo.setToolTip("选择视频下载质量和格式")
-        
+
         # 设置下拉箭头图标
         arrow_icon = qta.icon("fa5s.caret-down", color=ICON_COLOR)
         self.format_combo.view().window().setWindowIcon(arrow_icon)
-        
+
         # 修复下拉列表白边问题
         dropdown_view = self.format_combo.view()
         dropdown_view.setStyleSheet("""
@@ -230,12 +301,15 @@ class MainWindow(QMainWindow):
                 border: none;
             }
         """)
-        
+
         download_options_layout.addWidget(format_label, 0, 0)
         download_options_layout.addWidget(self.format_combo, 0, 1)
-        
+
         # 代理输入
         proxy_label = QLabel("HTTP 代理:")
+        proxy_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         self.proxy_input = QLineEdit()
         self.proxy_input.setPlaceholderText("例如: http://127.0.0.1:7890")
         download_options_layout.addWidget(proxy_label, 0, 2)
@@ -243,6 +317,9 @@ class MainWindow(QMainWindow):
 
         # 并发片段数输入
         concurrent_label = QLabel("并发片段数:")
+        concurrent_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         self.concurrent_input = QLineEdit()
         self.concurrent_input.setPlaceholderText("例如: 4 (留空使用默认)")
         download_options_layout.addWidget(concurrent_label, 1, 0)
@@ -250,7 +327,10 @@ class MainWindow(QMainWindow):
 
         # 字幕下载选项
         subs_label = QLabel("字幕选项:")
-        self.write_subs_checkbox = QCheckBox("下载字幕")
+        subs_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.write_subs_checkbox = Switch("下载字幕")
         self.write_subs_checkbox.setToolTip("下载视频的字幕文件")
         download_options_layout.addWidget(subs_label, 1, 2)
         download_options_layout.addWidget(self.write_subs_checkbox, 1, 3)
@@ -264,9 +344,18 @@ class MainWindow(QMainWindow):
         playlist_layout.setSpacing(10)
         playlist_layout.setContentsMargins(10, 10, 10, 10)
 
+        # 设置列伸缩因子：与下载选项区域保持一致
+        playlist_layout.setColumnStretch(0, 0)  # 标签列不伸缩
+        playlist_layout.setColumnStretch(1, 1)  # 输入框列可伸缩
+        playlist_layout.setColumnStretch(2, 0)  # 标签列不伸缩
+        playlist_layout.setColumnStretch(3, 1)  # 输入框列可伸缩
+
         # 下载播放列表开关
         playlist_label = QLabel("下载播放列表:")
-        self.download_playlist_checkbox = QCheckBox("启用")
+        playlist_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.download_playlist_checkbox = Switch("启用")
         self.download_playlist_checkbox.setChecked(DEFAULT_DOWNLOAD_PLAYLIST)
         self.download_playlist_checkbox.setToolTip("下载整个播放列表而不是单个视频")
         playlist_layout.addWidget(playlist_label, 0, 0)
@@ -274,6 +363,9 @@ class MainWindow(QMainWindow):
 
         # 播放列表项目范围
         playlist_items_label = QLabel("项目范围:")
+        playlist_items_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         self.playlist_items_input = QLineEdit()
         self.playlist_items_input.setPlaceholderText("例如: 1-5,7,10 (留空下载全部)")
         self.playlist_items_input.setText(DEFAULT_PLAYLIST_ITEMS)
@@ -282,7 +374,10 @@ class MainWindow(QMainWindow):
 
         # 随机顺序复选框
         random_label = QLabel("随机顺序:")
-        self.playlist_random_checkbox = QCheckBox("启用")
+        random_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.playlist_random_checkbox = Switch("启用")
         self.playlist_random_checkbox.setChecked(DEFAULT_PLAYLIST_RANDOM)
         self.playlist_random_checkbox.setToolTip("随机顺序下载播放列表中的视频")
         playlist_layout.addWidget(random_label, 1, 0)
@@ -290,6 +385,9 @@ class MainWindow(QMainWindow):
 
         # 最大下载数输入
         max_downloads_label = QLabel("最大下载数:")
+        max_downloads_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         self.max_downloads_input = QLineEdit()
         self.max_downloads_input.setPlaceholderText("例如: 10 (留空无限制)")
         self.max_downloads_input.setText(DEFAULT_MAX_DOWNLOADS)
@@ -303,7 +401,7 @@ class MainWindow(QMainWindow):
         dir_group = QGroupBox("保存目录")
         dir_layout = QVBoxLayout()
         dir_layout.setSpacing(5)
-        
+
         dir_input_layout = QHBoxLayout()
         self.download_directory_input = QLineEdit(self.selected_download_path)
         self.download_directory_input.setReadOnly(True)
@@ -311,7 +409,7 @@ class MainWindow(QMainWindow):
         self.select_dir_button.clicked.connect(self._select_download_directory)
         dir_input_layout.addWidget(self.download_directory_input)
         dir_input_layout.addWidget(self.select_dir_button)
-        
+
         dir_layout.addLayout(dir_input_layout)
         dir_group.setLayout(dir_layout)
         main_layout.addWidget(dir_group)
@@ -331,32 +429,42 @@ class MainWindow(QMainWindow):
         groupbox_title_font = QFont()
         groupbox_title_font.setPointSize(12)
         groupbox_title_font.setBold(True)
-        
-        for group in [url_group, download_options_group, playlist_group, dir_group, log_group]:
-            group.setStyleSheet("""
+
+        # 设置不同组的字体大小体现层级
+        group_styles = {
+            url_group: 15,
+            download_options_group: 14,
+            playlist_group: 13,
+            dir_group: 12,
+            log_group: 12,
+        }
+
+        for group, font_size in group_styles.items():
+            group.setStyleSheet(f"""
                 QGroupBox {{
-                    border: 1px solid #555555;
-                    border-radius: 6px;
-                    margin-top: 12px;
+                    border: 1px solid #444444;
+                    border-radius: 8px;
+                    margin-top: 20px;
                     padding-top: 10px;
-                    font-weight: 600;
-                    color: #e0e0e0;
+                    font-weight: 500;
+                    color: #dcdcdc;
                 }}
                 QGroupBox::title {{
                     subcontrol-origin: margin;
                     subcontrol-position: top left;
-                    left: 12px;
-                    padding: 0 8px 0 8px;
-                    font-size: 14pt;
+                    left: 10px;
+                    padding: 0 5px 0 5px;
+                    font-size: {font_size}pt;
                     font-weight: bold;
-                    color: #e0e0e0;
+                    color: #dcdcdc;
                 }}
             """)
 
     def _setup_toolbar(self) -> None:
         """设置工具栏及其动作"""
         toolbar = QToolBar("主工具栏")
-        toolbar.setMovable(False)
+        toolbar.setMovable(True)
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         toolbar.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         self.addToolBar(toolbar)
 
@@ -408,7 +516,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
         self.progress_bar.setFormat("%p%")
         self.statusBar().addPermanentWidget(self.status_label)
-        self.statusBar().addPermanentWidget(self.progress_bar)
+        # self.statusBar().addPermanentWidget(self.progress_bar)
         self.progress_bar.hide()
 
     def _apply_dark_theme(self) -> None:
@@ -524,9 +632,7 @@ class MainWindow(QMainWindow):
             or proxy_address.startswith("https://")
             or proxy_address.startswith("socks")
         ):
-            self._append_log(
-                f"警告: 代理地址 '{proxy_address}' 格式可能不正确"
-            )
+            self._append_log(f"警告: 代理地址 '{proxy_address}' 格式可能不正确")
 
         # 获取并发片段数
         concurrent_fragments = None
@@ -538,7 +644,9 @@ class MainWindow(QMainWindow):
                     self._append_log("警告: 并发片段数必须大于 0，将使用默认值")
                     concurrent_fragments = None
             except ValueError:
-                self._append_log(f"警告: 并发片段数 '{concurrent_text}' 格式不正确，将使用默认值")
+                self._append_log(
+                    f"警告: 并发片段数 '{concurrent_text}' 格式不正确，将使用默认值"
+                )
                 concurrent_fragments = None
 
         # 获取字幕下载选项
@@ -549,7 +657,7 @@ class MainWindow(QMainWindow):
         playlist_items = self.playlist_items_input.text().strip()
         playlist_random = self.playlist_random_checkbox.isChecked()
         max_downloads_text = self.max_downloads_input.text().strip()
-        
+
         # 解析最大下载数
         max_downloads = None
         if max_downloads_text:
@@ -559,7 +667,9 @@ class MainWindow(QMainWindow):
                     self._append_log("警告: 最大下载数必须大于 0，将使用默认值")
                     max_downloads = None
             except ValueError:
-                self._append_log(f"警告: 最大下载数 '{max_downloads_text}' 格式不正确，将使用默认值")
+                self._append_log(
+                    f"警告: 最大下载数 '{max_downloads_text}' 格式不正确，将使用默认值"
+                )
                 max_downloads = None
 
         # 获取下载路径
@@ -789,7 +899,7 @@ def run_gui() -> None:
 @click.version_option(version="0.1.0", prog_name="yt-dlp-gui")
 def cli() -> None:
     """Yt-dlp GUI - 现代化视频下载工具
-    
+
     支持从 YouTube、Bilibili、Vimeo 等数千个视频网站下载视频。
     """
     run_gui()
