@@ -78,9 +78,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
 
-      - name: Run tests (Linux with xvfb)
+      - name: Run tests (Linux with offscreen platform)
         if: runner.os == 'Linux'
-        run: xvfb-run -a uv run pytest --cov=src/yt_dlp_gui --cov-report=xml --cov-report=term-missing
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run pytest --cov=src/yt_dlp_gui --cov-report=xml --cov-report=term-missing
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'
