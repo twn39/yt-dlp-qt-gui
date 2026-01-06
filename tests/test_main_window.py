@@ -1,3 +1,4 @@
+import os
 from unittest.mock import MagicMock, patch
 
 
@@ -40,10 +41,13 @@ def test_paste_from_clipboard(app_window, qtbot):
 @patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory")
 def test_select_directory(mock_get_dir, app_window):
     """Test directory selection dialog."""
-    mock_get_dir.return_value = "/mock/path"
+    mock_path = "/mock/path"
+    mock_get_dir.return_value = mock_path
     app_window._select_download_directory()
-    assert app_window.selected_download_path == "/mock/path"
-    assert app_window.download_directory_input.text() == "/mock/path"
+    # Normalize paths for cross-platform comparison
+    expected_path = os.path.normpath(mock_path)
+    assert app_window.selected_download_path == expected_path
+    assert app_window.download_directory_input.text() == expected_path
 
 
 @patch("PySide6.QtWidgets.QMessageBox.about")
