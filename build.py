@@ -14,7 +14,7 @@ import shutil
 
 def clean_build_dirs():
     """清理之前的构建目录"""
-    dirs_to_clean = ['build', 'dist']
+    dirs_to_clean = ["build", "dist"]
     for dir_name in dirs_to_clean:
         if os.path.exists(dir_name):
             print(f"清理目录: {dir_name}")
@@ -26,20 +26,22 @@ def build():
     print("=" * 50)
     print("开始打包 yt-dlp-qt-gui...")
     print("=" * 50)
-    
+
     # 清理之前的构建
     clean_build_dirs()
-    
+
     # 使用 PyInstaller 打包
     cmd = [
-        sys.executable, "-m", "PyInstaller",
+        sys.executable,
+        "-m",
+        "PyInstaller",
         "--clean",
         "yt-dlp-qt-gui.spec",
     ]
-    
+
     print(f"执行命令: {' '.join(cmd)}")
     print()
-    
+
     try:
         subprocess.run(cmd, check=True)
         print()

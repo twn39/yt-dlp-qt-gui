@@ -136,6 +136,31 @@ The executable will be located in the `dist/` directory.
 
 ---
 
+## 🧪 Testing
+
+### Running Tests
+
+This project uses `pytest` for testing with `pytest-qt` for Qt-specific tests.
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run tests with coverage
+uv run pytest --cov=src/yt_dlp_gui --cov-report=html
+
+# Run specific test file
+uv run pytest tests/test_main_window.py
+
+# Run with verbose output
+uv run pytest -v
+
+# Run specific test
+uv run pytest tests/test_main_window.py::test_main_window_init
+```
+
+---
+
 ## 🛠️ Tech Stack
 
 -   **GUI Framework**: [PySide6](https://doc.qt.io/qtforpython/) (Qt for Python)

@@ -96,16 +96,40 @@
     uv run yt-dlp-qt-gui
     ```
     
-    
     查看版本信息：
     ```bash
     uv run yt-dlp-qt-gui --version
     ```
-    
+
     查看帮助信息：
     ```bash
     uv run yt-dlp-qt-gui --help
     ```
+
+---
+
+## 🧪 测试
+
+### 运行测试
+
+本项目使用 `pytest` 进行测试，配合 `pytest-qt` 处理 Qt 相关测试。
+
+```bash
+# 运行所有测试
+uv run pytest
+
+# 运行测试并生成覆盖率报告
+uv run pytest --cov=src/yt_dlp_gui --cov-report=html
+
+# 运行特定测试文件
+uv run pytest tests/test_main_window.py
+
+# 使用详细输出运行测试
+uv run pytest -v
+
+# 运行特定测试用例
+uv run pytest tests/test_main_window.py::test_main_window_init
+```
 
 ---
 

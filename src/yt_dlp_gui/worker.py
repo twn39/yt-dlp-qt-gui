@@ -75,8 +75,7 @@ class DownloadWorker(QObject):
                 self.log_message.emit(f"文件下载完成: {os.path.basename(filename)}")
                 # 只有当下载的是视频文件（非字幕文件）时才发送合并状态
                 if filename and not any(
-                    filename.endswith(ext)
-                    for ext in [".srt", ".vtt", ".ass", ".ssa", ".json"]
+                    filename.endswith(ext) for ext in [".srt", ".vtt", ".ass", ".ssa", ".json"]
                 ):
                     self.progress.emit({"status": "merging"})
             else:
@@ -161,7 +160,7 @@ class DownloadWorker(QObject):
                 break
 
             self.log_message.emit(f"[{i}/{total_urls}] 正在处理: {url}")
-            
+
             try:
                 with yt_dlp.YoutubeDL(base_options) as ydl:
                     ydl.extract_info(url, download=True)
@@ -212,4 +211,3 @@ class DownloadWorker(QObject):
             # 过滤掉进度条更新信息
             if not msg.startswith("[download]"):
                 self.log_signal.emit(msg)
-

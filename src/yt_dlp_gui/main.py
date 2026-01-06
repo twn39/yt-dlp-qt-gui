@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
 )
 from PySide6.QtCore import (
+    QCoreApplication,
     QThread,
     Slot,
     QSize,
@@ -31,7 +32,16 @@ from PySide6.QtCore import (
     Qt,
     QRect,
 )
-from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QClipboard, QIcon, QFont, QPainter, QColor
+from PySide6.QtGui import (
+    QAction,
+    QDragEnterEvent,
+    QDropEvent,
+    QClipboard,
+    QIcon,
+    QFont,
+    QPainter,
+    QColor,
+)
 from .worker import DownloadWorker
 from .config import (
     WINDOW_TITLE,
@@ -62,7 +72,7 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
         # 在 PyInstaller 打包的环境中运行
         if hasattr(sys, "_MEIPASS"):
             # 文件被解压到 _MEIPASS 目录
-            possible_paths.append(os.path.join(sys._MEIPASS, filename))
+            possible_paths.append(os.path.join(sys._MEIPASS, filename))  # type: ignore[attr-defined]
         # 可执行文件所在目录
         possible_paths.append(os.path.join(os.path.dirname(sys.executable), filename))
     else:
@@ -72,9 +82,7 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
             os.path.join(os.path.dirname(__file__), "..", "..", filename)
         )  # src 布局
         possible_paths.append(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "..", "..", filename
-            )
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", filename)
         )
 
     for filepath in possible_paths:
@@ -100,16 +108,14 @@ def load_icon(filename: str = "src/yt_dlp_gui/resources/logo.jpg") -> QIcon | No
         # 在 PyInstaller 打包的环境中运行
         if hasattr(sys, "_MEIPASS"):
             # 文件被解压到 _MEIPASS 目录
-            possible_paths.append(os.path.join(sys._MEIPASS, filename))
+            possible_paths.append(os.path.join(sys._MEIPASS, filename))  # type: ignore[attr-defined]
         # 可执行文件所在目录
         possible_paths.append(os.path.join(os.path.dirname(sys.executable), filename))
     else:
         # 开发环境
         possible_paths.append(filename)  # 相对于当前工作目录
         possible_paths.append(
-            os.path.join(
-                os.path.dirname(__file__), "resources", os.path.basename(filename)
-            )
+            os.path.join(os.path.dirname(__file__), "resources", os.path.basename(filename))
         )
 
     for filepath in possible_paths:
@@ -201,13 +207,9 @@ class MainWindow(QMainWindow):
 
     def _get_default_download_path(self) -> str:
         """获取默认的下载目录"""
-        path = QStandardPaths.writableLocation(
-            QStandardPaths.StandardLocation.DownloadLocation
-        )
+        path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
         if not path or not os.path.exists(path):
-            path = QStandardPaths.writableLocation(
-                QStandardPaths.StandardLocation.HomeLocation
-            )
+            path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.HomeLocation)
         if not path:
             path = "."
         return path
@@ -231,12 +233,13 @@ class MainWindow(QMainWindow):
         self.url_input.setAcceptRichText(False)
         self.url_input.setMinimumHeight(80)
         self.url_input.setMaximumHeight(150)
-        
+
         # 添加快捷键支持 (Ctrl/Cmd + Enter 开始下载)
         from PySide6.QtGui import QKeySequence, QShortcut
+
         start_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self.url_input)
         start_shortcut.activated.connect(self._start_download)
-        
+
         url_group_layout.addWidget(self.url_input)
         url_group.setLayout(url_group_layout)
         main_layout.addWidget(url_group)
@@ -255,9 +258,7 @@ class MainWindow(QMainWindow):
 
         # 格式选择
         format_label = QLabel("下载格式:")
-        format_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        format_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.format_combo = QComboBox()
 
         # 为每个格式预设添加图标
@@ -273,9 +274,7 @@ class MainWindow(QMainWindow):
 
         # 添加带图标的格式选项
         for format_name in FORMAT_PRESETS.keys():
-            icon = format_icons.get(
-                format_name, qta.icon("fa5s.file", color=ICON_COLOR)
-            )
+            icon = format_icons.get(format_name, qta.icon("fa5s.file", color=ICON_COLOR))
             self.format_combo.addItem(icon, format_name)
 
         self.format_combo.setCurrentIndex(0)  # 默认选择第一个
@@ -317,9 +316,7 @@ class MainWindow(QMainWindow):
 
         # 代理输入
         proxy_label = QLabel("HTTP 代理:")
-        proxy_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        proxy_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.proxy_input = QLineEdit()
         self.proxy_input.setPlaceholderText("例如: http://127.0.0.1:7890")
         download_options_layout.addWidget(proxy_label, 0, 2)
@@ -327,9 +324,7 @@ class MainWindow(QMainWindow):
 
         # 并发片段数输入
         concurrent_label = QLabel("并发片段数:")
-        concurrent_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        concurrent_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.concurrent_input = QLineEdit()
         self.concurrent_input.setPlaceholderText("例如: 4 (留空使用默认)")
         download_options_layout.addWidget(concurrent_label, 1, 0)
@@ -337,9 +332,7 @@ class MainWindow(QMainWindow):
 
         # 字幕下载选项
         subs_label = QLabel("字幕选项:")
-        subs_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        subs_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.write_subs_checkbox = Switch("下载字幕")
         self.write_subs_checkbox.setToolTip("下载视频的字幕文件")
         download_options_layout.addWidget(subs_label, 1, 2)
@@ -362,9 +355,7 @@ class MainWindow(QMainWindow):
 
         # 下载播放列表开关
         playlist_label = QLabel("下载播放列表:")
-        playlist_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        playlist_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.download_playlist_checkbox = Switch("启用")
         self.download_playlist_checkbox.setChecked(DEFAULT_DOWNLOAD_PLAYLIST)
         self.download_playlist_checkbox.setToolTip("下载整个播放列表而不是单个视频")
@@ -384,9 +375,7 @@ class MainWindow(QMainWindow):
 
         # 随机顺序复选框
         random_label = QLabel("随机顺序:")
-        random_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        random_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.playlist_random_checkbox = Switch("启用")
         self.playlist_random_checkbox.setChecked(DEFAULT_PLAYLIST_RANDOM)
         self.playlist_random_checkbox.setToolTip("随机顺序下载播放列表中的视频")
@@ -489,9 +478,7 @@ class MainWindow(QMainWindow):
         self.main_toolbar.addAction(self.download_action)
 
         # 粘贴 URL 按钮
-        paste_icon = qta.icon(
-            "fa5s.paste", color=ICON_COLOR, color_active=ICON_COLOR_ACTIVE_ACCENT
-        )
+        paste_icon = qta.icon("fa5s.paste", color=ICON_COLOR, color_active=ICON_COLOR_ACTIVE_ACCENT)
         paste_action = QAction(paste_icon, "粘贴 URL", self)
         paste_action.setStatusTip("从剪贴板粘贴 URL")
         paste_action.triggered.connect(self._paste_url_from_clipboard)
@@ -692,9 +679,7 @@ class MainWindow(QMainWindow):
                     self._append_log("警告: 并发片段数必须大于 0，将使用默认值")
                     concurrent_fragments = None
             except ValueError:
-                self._append_log(
-                    f"警告: 并发片段数 '{concurrent_text}' 格式不正确，将使用默认值"
-                )
+                self._append_log(f"警告: 并发片段数 '{concurrent_text}' 格式不正确，将使用默认值")
                 concurrent_fragments = None
 
         # 获取字幕下载选项
@@ -784,9 +769,9 @@ class MainWindow(QMainWindow):
                     or progress_data.get("filename")
                     or "未知文件"
                 )
-                total_bytes_str = progress_data.get(
-                    "total_bytes_estimate"
-                ) or progress_data.get("total_bytes")
+                total_bytes_str = progress_data.get("total_bytes_estimate") or progress_data.get(
+                    "total_bytes"
+                )
                 downloaded_bytes_str = progress_data.get("downloaded_bytes")
                 speed_str = progress_data.get("speed_str", "N/A").strip()
                 eta_str = progress_data.get("eta_str", "N/A").strip()
@@ -810,9 +795,7 @@ class MainWindow(QMainWindow):
                         self.progress_bar.setFormat("%.2f MiB" % downloaded_mbytes)
                         self.progress_bar.setValue(0)
                         self.progress_bar.setMaximum(0)
-                        self.status_label.setText(
-                            f"下载中: {filename[:30]}... | {speed_str}"
-                        )
+                        self.status_label.setText(f"下载中: {filename[:30]}... | {speed_str}")
                 else:
                     self.status_label.setText(
                         f"下载中: {filename[:30]}... | {speed_str} | 剩余: {eta_str}"
@@ -910,11 +893,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def _cancel_download(self) -> None:
         """尝试取消当前下载"""
-        if (
-            self.current_worker
-            and self.current_thread
-            and self.current_thread.isRunning()
-        ):
+        if self.current_worker and self.current_thread and self.current_thread.isRunning():
             self.status_label.setText("正在尝试取消...")
             self._append_log("发送取消请求...")
             self.current_worker.cancel()
@@ -938,9 +917,7 @@ class MainWindow(QMainWindow):
                 if self.current_thread:
                     self.current_thread.quit()
                     if not self.current_thread.wait(500):
-                        self._append_log(
-                            "警告：下载线程未能及时停止，可能在后台继续运行。"
-                        )
+                        self._append_log("警告：下载线程未能及时停止，可能在后台继续运行。")
                 event.accept()
             else:
                 event.ignore()
@@ -948,7 +925,7 @@ class MainWindow(QMainWindow):
             event.accept()
 
 
-def create_app() -> tuple[QApplication, MainWindow]:
+def create_app() -> tuple[QCoreApplication, MainWindow]:
     """创建并初始化 QApplication 和 MainWindow"""
     app = QApplication.instance()
     if app is None:
