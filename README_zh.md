@@ -4,7 +4,7 @@
 
 # Yt-dlp Qt GUI
 
-![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![PySide6](https://img.shields.io/badge/PySide6-6.9.0+-green.svg)
 ![yt-dlp](https://img.shields.io/badge/yt--dlp-2025.12.8+-red.svg)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
