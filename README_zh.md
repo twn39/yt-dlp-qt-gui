@@ -4,6 +4,8 @@
 
 # Yt-dlp Qt GUI
 
+![CI](https://github.com/twn39/yt-dlp-qt-gui/actions/workflows/ci.yml/badge.svg)
+![codecov](https://codecov.io/gh/twn39/yt-dlp-qt-gui/branch/main/graph/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![PySide6](https://img.shields.io/badge/PySide6-6.9.0+-green.svg)
 ![yt-dlp](https://img.shields.io/badge/yt--dlp-2025.12.8+-red.svg)
