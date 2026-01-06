@@ -33,5 +33,9 @@ yt_dlp_gui = ["*.qss"]
 dev = [
     "ruff>=0.14.10",
     "ty>=0.0.8",
+    "pytest>=8.0.0",
+    "pytest-qt>=4.4.0",
+    "pytest-mock>=3.12.0",
+    "pytest-cov>=7.0.0",
 ]
 

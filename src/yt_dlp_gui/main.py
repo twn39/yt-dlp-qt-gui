@@ -948,10 +948,18 @@ class MainWindow(QMainWindow):
             event.accept()
 
 
+def create_app() -> tuple[QApplication, MainWindow]:
+    """创建并初始化 QApplication 和 MainWindow"""
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+    window = MainWindow()
+    return app, window
+
+
 def run_gui() -> None:
     """启动 GUI 应用程序"""
-    app = QApplication(sys.argv)
-    window = MainWindow()
+    app, window = create_app()
     window.show()
     sys.exit(app.exec())
 

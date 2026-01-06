@@ -13,3 +13,4 @@ docs/
 .ruff_cache
 .DS_Store
 .agent
+.coverage
