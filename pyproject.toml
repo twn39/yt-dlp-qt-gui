@@ -8,19 +8,18 @@ version = "0.2.0"
 description = "现代化视频下载工具，基于 yt-dlp 和 PySide6"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "GPL-3.0"}
+license = "GPL-3.0-or-later"
 authors = [
-    {name = "twn39"}
+    { name = "curry tang", email = "twn39@163.com" }
 ]
 maintainers = [
-    {name = "twn39"}
+    { name = "curry tang", email = "twn39@163.com" }
 ]
 keywords = ["video", "download", "yt-dlp", "gui", "pyside6", "qt"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: X11 Applications :: Qt",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
