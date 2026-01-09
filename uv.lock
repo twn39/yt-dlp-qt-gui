@@ -509,19 +509,9 @@ dependencies = [
     { name = "yt-dlp" },
 ]
 
-[package.optional-dependencies]
-packaging = [
-    { name = "pyinstaller" },
-]
-test = [
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "pytest-qt" },
-]
-
 [package.dev-dependencies]
 dev = [
+    { name = "pyinstaller" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
@@ -533,19 +523,14 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.0" },
-    { name = "pyinstaller", marker = "extra == 'packaging'", specifier = ">=6.0.0" },
     { name = "pyside6", specifier = ">=6.10.1" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0.0" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=7.0.0" },
-    { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.12.0" },
-    { name = "pytest-qt", marker = "extra == 'test'", specifier = ">=4.4.0" },
     { name = "qtawesome", specifier = ">=1.4.0" },
     { name = "yt-dlp", specifier = ">=2025.12.8" },
 ]
-provides-extras = ["packaging", "test"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pyinstaller", specifier = ">=6.0.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-mock", specifier = ">=3.12.0" },
