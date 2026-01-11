@@ -179,3 +179,13 @@ QScrollBar::handle:vertical {
 QScrollBar::handle:vertical:hover {
     background: #555555;
 }
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}

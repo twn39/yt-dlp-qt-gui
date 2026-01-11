@@ -537,7 +537,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
         self.progress_bar.setFormat("%p%")
         self.statusBar().addPermanentWidget(self.status_label)
-        # self.statusBar().addPermanentWidget(self.progress_bar)
+        self.statusBar().addPermanentWidget(self.progress_bar)
         self.progress_bar.hide()
 
     def _apply_dark_theme(self) -> None:
