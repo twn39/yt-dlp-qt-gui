@@ -73,7 +73,8 @@
 
 -   Python 3.12 or higher
 -   uv (Recommended package manager)
--   FFmpeg (Required for merging; ensure it's in your system PATH)
+-   **FFmpeg** (Required for merging video/audio; ensure it's in your system PATH)
+-   **Deno** (Recommended for YouTube extraction; required for processing some YouTube formats)
 
 ### Installation
 
@@ -178,11 +179,13 @@ uv run pytest tests/test_main_window.py::test_main_window_init
 A: Please check:
 -   URL is correct and accessible.
 -   Network connection is stable.
+-   **Deno** is installed (required for YouTube extraction).
+-   **FFmpeg** is installed (required for merging formats).
 -   Try using a proxy if there are regional restrictions.
 -   Check logs for specific error details.
 
-### Q: Is FFmpeg mandatory?
-A: Yes. FFmpeg is used to merge video and audio. Without it, some formats may not download correctly.
+### Q: Is FFmpeg/Deno mandatory?
+A: Yes. **FFmpeg** is used to merge video and audio. **Deno** (or another JS runtime) is required for YouTube extraction. Without them, some formats may not download correctly or at all.
 
 ---
 

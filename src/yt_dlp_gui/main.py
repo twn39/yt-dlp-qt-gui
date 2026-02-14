@@ -439,8 +439,16 @@ class MainWindow(QMainWindow):
     @Slot(int, bool, str)
     def _on_finished(self, task_id, success, message):
         status = "finished" if success else ("cancelled" if "用户取消" in message else "error")
-        self.db.update_task(task_id, {"status": status, "progress": 100 if success else 0})
-        self._update_table_row(task_id, {"status": status, "progress": 100 if success else 0})
+        # 完成时清空速度和剩余时间
+        updates = {
+            "status": status, 
+            "progress": 100 if success else 0,
+            "speed": "--",
+            "eta": "--"
+        }
+        self.db.update_task(task_id, updates)
+        self._update_table_row(task_id, updates)
+        
         if task_id in self.threads:
             self.threads[task_id].quit()
             self.threads[task_id].wait()
