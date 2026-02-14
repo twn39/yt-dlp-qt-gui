@@ -7,6 +7,7 @@ def test_worker_initialization():
     urls = ["https://example.com/video1"]
     download_path = "/tmp/downloads"
     worker = DownloadWorker(
+        task_id=1,
         url=urls,
         download_path=download_path,
         format_preset="best",
@@ -15,7 +16,8 @@ def test_worker_initialization():
         write_subs=True,
     )
 
-    assert worker.urls == urls
+    # assert worker.urls == urls # worker.url stores the string/list
+    assert worker.url == urls
     assert worker.download_path == download_path
     assert worker.proxy == "http://127.0.0.1:8080"
     assert worker.concurrent_fragments == 4
@@ -25,7 +27,7 @@ def test_worker_initialization():
 
 def test_worker_cancel():
     """Test that the worker can be cancelled."""
-    worker = DownloadWorker(url=["url"], download_path="path")
+    worker = DownloadWorker(task_id=1, url=["url"], download_path="path")
     assert not worker._is_cancelled
     worker.cancel()
     assert worker._is_cancelled
@@ -33,26 +35,26 @@ def test_worker_cancel():
 
 def test_worker_logger(qtbot):
     """Test the YtdlpLogger signal emission."""
-    worker = DownloadWorker(url=["url"], download_path="path")
-    logger = worker.YtdlpLogger(worker.log_message)
+    worker = DownloadWorker(task_id=1, url=["url"], download_path="path")
+    logger = worker.YtdlpLogger(worker.task_id, worker.log_message)
 
     with qtbot.waitSignal(worker.log_message, timeout=1000) as blocker:
         logger.info("Test Info Message")
-    assert blocker.args[0] == "Test Info Message"
+    assert blocker.args[1] == "Test Info Message"
 
     with qtbot.waitSignal(worker.log_message, timeout=1000) as blocker:
         logger.warning("Test Warning")
-    assert "警告: Test Warning" in blocker.args[0]
+    assert "警告: Test Warning" in blocker.args[1]
 
     with qtbot.waitSignal(worker.log_message, timeout=1000) as blocker:
         logger.error("Test Error")
-    assert "错误: Test Error" in blocker.args[0]
+    assert "错误: Test Error" in blocker.args[1]
 
 
 @patch("yt_dlp.YoutubeDL")
 def test_worker_run_success(mock_ytdl, qtbot):
     """Test successful worker run with mocked yt-dlp."""
-    worker = DownloadWorker(url=["https://example.com/v"], download_path=".")
+    worker = DownloadWorker(task_id=1, url=["https://example.com/v"], download_path=".")
 
     # Mocking behavior
     mock_instance = mock_ytdl.return_value.__enter__.return_value
@@ -60,15 +62,16 @@ def test_worker_run_success(mock_ytdl, qtbot):
     with qtbot.waitSignal(worker.finished, timeout=2000) as blocker:
         worker.run()
 
-    assert blocker.args[0] is True  # Success
-    assert "全部成功" in blocker.args[1]
+    assert blocker.args[0] == 1
+    assert blocker.args[1] is True  # Success
+    assert "完成" in blocker.args[2]
     mock_instance.extract_info.assert_called_once()
 
 
 @patch("yt_dlp.YoutubeDL")
 def test_worker_run_failure(mock_ytdl, qtbot):
     """Test worker failure handling."""
-    worker = DownloadWorker(url=["https://example.com/v"], download_path=".")
+    worker = DownloadWorker(task_id=1, url=["https://example.com/v"], download_path=".")
 
     # Mocking an exception
     mock_ytdl.return_value.__enter__.return_value.extract_info.side_effect = Exception(
@@ -78,14 +81,16 @@ def test_worker_run_failure(mock_ytdl, qtbot):
     with qtbot.waitSignal(worker.finished, timeout=2000) as blocker:
         worker.run()
 
-    assert blocker.args[0] is False  # Failure
-    assert "任务结束" in blocker.args[1]
+    assert blocker.args[0] == 1
+    assert blocker.args[1] is False  # Failure
+    assert "Download Error" in blocker.args[2]
 
 
 @patch("yt_dlp.YoutubeDL")
 def test_worker_run_complex_config(mock_ytdl, qtbot):
     """Test worker.run with various configuration options."""
     worker = DownloadWorker(
+        task_id=1,
         url=["url"],
         download_path=".",
         proxy="http://proxy",
@@ -115,12 +120,13 @@ def test_worker_run_complex_config(mock_ytdl, qtbot):
 
 def test_progress_hook_extensions(qtbot):
     """Test _progress_hook signal emission for specific file extensions."""
-    worker = DownloadWorker(url=["url"], download_path=".")
+    worker = DownloadWorker(task_id=1, url=["url"], download_path=".")
 
     # Test merging status
     with qtbot.waitSignal(worker.progress, timeout=1000) as blocker:
         worker._progress_hook({"status": "finished", "filename": "test.mp4"})
-    assert blocker.args[0]["status"] == "merging"
+    assert blocker.args[0] == 1
+    assert blocker.args[1]["status"] == "merging"
 
     # Test subtitle extension (should NOT emit merging)
     import pytest
@@ -135,7 +141,7 @@ def test_progress_hook_cancellation():
     from yt_dlp.utils import DownloadCancelled
     import pytest
 
-    worker = DownloadWorker(url=["url"], download_path=".")
+    worker = DownloadWorker(task_id=1, url=["url"], download_path=".")
     worker.cancel()
 
     with pytest.raises(DownloadCancelled):

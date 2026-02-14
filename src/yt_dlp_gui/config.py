@@ -42,10 +42,10 @@ PROGRESS_BAR_MAX_WIDTH: Final[int] = 200
 
 # 工具栏图标
 ICON_SIZE: Final[int] = 24
-ICON_COLOR: Final[str] = "#cccccc"
-ICON_COLOR_ACTIVE_ACCENT: Final[str] = "#00aaff"
-ICON_COLOR_ACTIVE_DELETE: Final[str] = "#ff6b6b"
-ICON_COLOR_ACTIVE_CANCEL: Final[str] = "#ffcc00"
+ICON_COLOR: Final[str] = "#E0E0E0"
+ICON_COLOR_ACTIVE_ACCENT: Final[str] = "#4A90E2"
+ICON_COLOR_ACTIVE_DELETE: Final[str] = "#F44336"
+ICON_COLOR_ACTIVE_CANCEL: Final[str] = "#FF9800"
 
 # =====================
 # 样式文件
