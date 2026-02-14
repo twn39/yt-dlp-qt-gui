@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yt-dlp-qt-gui"
-version = "0.2.0"
+version = "0.3.0"
 description = "现代化视频下载工具，基于 yt-dlp 和 PySide6"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -52,13 +52,13 @@ yt_dlp_gui = ["*.qss", "resources/*"]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.14.10",
-    "ty>=0.0.8",
+    "ruff>=0.15.1",
+    "ty>=0.0.17",
     "pytest>=8.0.0",
     "pytest-qt>=4.4.0",
     "pytest-mock>=3.12.0",
     "pytest-cov>=7.0.0",
-    "pyinstaller>=6.0.0",
+    "pyinstaller>=6.18.0",
     "pip>=26.0.1",
 ]
 
