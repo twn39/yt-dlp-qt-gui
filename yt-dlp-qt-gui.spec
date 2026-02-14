@@ -88,7 +88,7 @@ app = BUNDLE(
         'NSHighResolutionCapable': True,
         'NSRequiresAquaSystemAppearance': False,  # 允许深色模式
         'LSEnvironment': {
-            'PATH': '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+            'PATH': '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
         },
     },
 )
