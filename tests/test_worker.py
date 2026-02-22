@@ -4,11 +4,11 @@ from yt_dlp_gui.worker import DownloadWorker
 
 def test_worker_initialization():
     """Test that DownloadWorker initializes with correct parameters."""
-    urls = ["https://example.com/video1"]
+    url = "https://example.com/video1"
     download_path = "/tmp/downloads"
     worker = DownloadWorker(
         task_id=1,
-        url=urls,
+        url=url,
         download_path=download_path,
         format_preset="best",
         proxy="http://127.0.0.1:8080",
@@ -16,8 +16,7 @@ def test_worker_initialization():
         write_subs=True,
     )
 
-    # assert worker.urls == urls # worker.url stores the string/list
-    assert worker.url == urls
+    assert worker.url == url
     assert worker.download_path == download_path
     assert worker.proxy == "http://127.0.0.1:8080"
     assert worker.concurrent_fragments == 4
@@ -27,7 +26,7 @@ def test_worker_initialization():
 
 def test_worker_cancel():
     """Test that the worker can be cancelled."""
-    worker = DownloadWorker(task_id=1, url=["url"], download_path="path")
+    worker = DownloadWorker(task_id=1, url="url", download_path="path")
     assert not worker._is_cancelled
     worker.cancel()
     assert worker._is_cancelled
@@ -35,7 +34,7 @@ def test_worker_cancel():
 
 def test_worker_logger(qtbot):
     """Test the YtdlpLogger signal emission."""
-    worker = DownloadWorker(task_id=1, url=["url"], download_path="path")
+    worker = DownloadWorker(task_id=1, url="url", download_path="path")
     logger = worker.YtdlpLogger(worker.task_id, worker.log_message)
 
     with qtbot.waitSignal(worker.log_message, timeout=1000) as blocker:
@@ -54,7 +53,7 @@ def test_worker_logger(qtbot):
 @patch("yt_dlp.YoutubeDL")
 def test_worker_run_success(mock_ytdl, qtbot):
     """Test successful worker run with mocked yt-dlp."""
-    worker = DownloadWorker(task_id=1, url=["https://example.com/v"], download_path=".")
+    worker = DownloadWorker(task_id=1, url="https://example.com/v", download_path=".")
 
     # Mocking behavior
     mock_instance = mock_ytdl.return_value.__enter__.return_value
@@ -71,7 +70,7 @@ def test_worker_run_success(mock_ytdl, qtbot):
 @patch("yt_dlp.YoutubeDL")
 def test_worker_run_failure(mock_ytdl, qtbot):
     """Test worker failure handling."""
-    worker = DownloadWorker(task_id=1, url=["https://example.com/v"], download_path=".")
+    worker = DownloadWorker(task_id=1, url="https://example.com/v", download_path=".")
 
     # Mocking an exception
     mock_ytdl.return_value.__enter__.return_value.extract_info.side_effect = Exception(
@@ -91,7 +90,7 @@ def test_worker_run_complex_config(mock_ytdl, qtbot):
     """Test worker.run with various configuration options."""
     worker = DownloadWorker(
         task_id=1,
-        url=["url"],
+        url="url",
         download_path=".",
         proxy="http://proxy",
         concurrent_fragments=8,
@@ -120,7 +119,7 @@ def test_worker_run_complex_config(mock_ytdl, qtbot):
 
 def test_progress_hook_extensions(qtbot):
     """Test _progress_hook signal emission for specific file extensions."""
-    worker = DownloadWorker(task_id=1, url=["url"], download_path=".")
+    worker = DownloadWorker(task_id=1, url="url", download_path=".")
 
     # Test merging status
     with qtbot.waitSignal(worker.progress, timeout=1000) as blocker:
@@ -141,7 +140,7 @@ def test_progress_hook_cancellation():
     from yt_dlp.utils import DownloadCancelled
     import pytest
 
-    worker = DownloadWorker(task_id=1, url=["url"], download_path=".")
+    worker = DownloadWorker(task_id=1, url="url", download_path=".")
     worker.cancel()
 
     with pytest.raises(DownloadCancelled):

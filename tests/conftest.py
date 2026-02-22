@@ -1,10 +1,10 @@
 import pytest
-from yt_dlp_gui.main import create_app
+from yt_dlp_gui.main import MainWindow
 
 
 @pytest.fixture
 def app_window(qtbot):
     """Fixture to create and return the MainWindow instance."""
-    app, window = create_app()
+    window = MainWindow()
     qtbot.addWidget(window)
     return window
