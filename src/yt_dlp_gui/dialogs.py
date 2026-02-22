@@ -1,12 +1,11 @@
 import os
-import qtawesome as qta
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLineEdit, QTextEdit, 
+    QDialog, QVBoxLayout, QHBoxLayout, QLineEdit, QTextEdit,
     QPushButton, QFileDialog, QComboBox, QGroupBox, QGridLayout, QLabel
 )
-from PySide6.QtCore import Qt, QStandardPaths
+from PySide6.QtCore import QStandardPaths
 from PySide6.QtGui import QFont
-from .config import FORMAT_PRESETS, ICON_COLOR, DEFAULT_DOWNLOAD_PLAYLIST, DEFAULT_PLAYLIST_ITEMS, DEFAULT_PLAYLIST_RANDOM, DEFAULT_MAX_DOWNLOADS
+from .config import FORMAT_PRESETS
 from .components import Switch
 
 class LogDialog(QDialog):
@@ -24,7 +23,7 @@ class LogDialog(QDialog):
         self.log_output.setFont(QFont("Courier New", 10) if os.name == "nt" else QFont("Menlo", 10))
         self.log_output.setStyleSheet("background-color: #0F0F0F; color: #FFFFFF; border: 1px solid #000000; border-radius: 3px;")
         layout.addWidget(self.log_output)
-        
+
         btn_close = QPushButton("关闭")
         btn_close.clicked.connect(self.close)
         layout.addWidget(btn_close)
@@ -56,7 +55,7 @@ class AddTaskDialog(QDialog):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        
+
         # URL Input
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("粘贴视频链接...")
@@ -66,11 +65,11 @@ class AddTaskDialog(QDialog):
         # Download Options
         options_group = QGroupBox("下载选项")
         options_layout = QGridLayout()
-        
+
         self.format_combo = QComboBox()
         for format_name in FORMAT_PRESETS.keys():
             self.format_combo.addItem(format_name)
-        
+
         options_layout.addWidget(QLabel("下载格式:"), 0, 0)
         options_layout.addWidget(self.format_combo, 0, 1)
 
@@ -93,7 +92,7 @@ class AddTaskDialog(QDialog):
         # Playlist Options
         playlist_group = QGroupBox("播放列表设置")
         playlist_layout = QGridLayout()
-        
+
         self.download_playlist_checkbox = Switch("启用")
         playlist_layout.addWidget(QLabel("下载播放列表:"), 0, 0)
         playlist_layout.addWidget(self.download_playlist_checkbox, 0, 1)

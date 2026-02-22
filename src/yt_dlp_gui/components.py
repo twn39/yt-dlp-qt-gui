@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import (
-    QCheckBox, QWidget, QLabel, QProgressBar, QPushButton, 
-    QHBoxLayout, QVBoxLayout, QFrame
+    QCheckBox, QWidget, QLabel, QProgressBar, QPushButton,
+    QHBoxLayout, QVBoxLayout
 )
-from PySide6.QtCore import Qt, QRect, Signal, QSize
-from PySide6.QtGui import QPainter, QColor, QIcon
+from PySide6.QtCore import Qt, QRect, Signal
+from PySide6.QtGui import QPainter, QColor
 import qtawesome as qta
 
 ICON_COLOR = "#E0E0E0"
@@ -57,7 +57,7 @@ class Switch(QCheckBox):
 
 class TaskItemWidget(QWidget):
     """Modern card-like widget for a single download task"""
-    
+
     # Signals for interactions
     start_clicked = Signal(int)
     stop_clicked = Signal(int)
@@ -92,7 +92,7 @@ class TaskItemWidget(QWidget):
         # 2. Central Info Area
         info_layout = QVBoxLayout()
         info_layout.setSpacing(5)
-        
+
         # Row 1: Title
         self.title_label = QLabel("Loading...")
         self.title_label.setObjectName("task_title")
@@ -119,13 +119,13 @@ class TaskItemWidget(QWidget):
         # Row 3: Meta Info (Status, Speed, ETA)
         meta_layout = QHBoxLayout()
         meta_layout.setSpacing(15)
-        
+
         self.status_label = QLabel("Waiting")
         self.status_label.setStyleSheet("color: #AAAAAA; font-size: 11px;")
-        
+
         self.speed_label = QLabel("")
         self.speed_label.setStyleSheet("color: #666666; font-size: 11px;")
-        
+
         self.eta_label = QLabel("")
         self.eta_label.setStyleSheet("color: #666666; font-size: 11px;")
 
@@ -133,7 +133,7 @@ class TaskItemWidget(QWidget):
         meta_layout.addWidget(self.speed_label)
         meta_layout.addWidget(self.eta_label)
         meta_layout.addStretch()
-        
+
         info_layout.addLayout(meta_layout)
         layout.addLayout(info_layout, stretch=1)
 
@@ -193,13 +193,13 @@ class TaskItemWidget(QWidget):
             self.title_label.setText(data['title'])
         elif 'url' in data:
             self.title_label.setText(data['url'])
-            
+
         if 'progress' in data and data['progress'] is not None:
             self.pbar.setValue(data['progress'])
-            
+
         if 'speed' in data:
             self.speed_label.setText(f"{data['speed']}")
-        
+
         if 'eta' in data:
             self.eta_label.setText(f"剩余: {data['eta']}")
 
@@ -216,17 +216,17 @@ class TaskItemWidget(QWidget):
             "cancelled": ("已取消", "#9E9E9E", "fa5s.ban"),
             "waiting": ("等待中", "#888888", "fa5s.clock")
         }
-        
+
         text, color, icon_name = status_map.get(status, (status, "#888888", "fa5s.question"))
-        
+
         self.status_label.setText(text)
         self.status_label.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 11px;")
-        
+
         # Update main icon based on status
         if status == "finished":
             icon = qta.icon(icon_name, color=color)
             self.icon_label.setPixmap(icon.pixmap(24, 24))
-        
+
         # Actions visibility
         is_running = status in ["downloading", "merging"]
         self.btn_start.setVisible(not is_running)

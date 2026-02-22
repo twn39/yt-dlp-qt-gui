@@ -4,19 +4,15 @@ from typing import Any, Dict
 import click
 import qtawesome as qta
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QProgressBar, QPushButton,
-    QMessageBox, QHeaderView, QAbstractItemView, QToolBar, QMenu, QLabel,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QProgressBar, QMessageBox, QHeaderView, QAbstractItemView, QToolBar, QMenu, QLabel,
     QFrame
 )
 from PySide6.QtCore import Qt, QThread, Slot, QSize, QUrl
-from PySide6.QtGui import QAction, QIcon, QFont, QDesktopServices
+from PySide6.QtGui import QAction, QDesktopServices
 
 from .worker import DownloadWorker
 from .config import (
-    WINDOW_TITLE, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT,
-    STYLESHEET_FILE, ICON_COLOR, ICON_COLOR_ACTIVE_ACCENT,
-    ICON_COLOR_ACTIVE_DELETE, ICON_COLOR_ACTIVE_CANCEL
+    STYLESHEET_FILE
 )
 from .database import Database
 from .dialogs import AddTaskDialog, LogDialog
@@ -31,7 +27,7 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
     else:
         possible_paths.append(filename)
         possible_paths.append(os.path.join(os.path.dirname(__file__), "..", "..", filename))
-    
+
     for filepath in possible_paths:
         if os.path.exists(filepath):
             try:
@@ -49,10 +45,10 @@ class MainWindow(QMainWindow):
         self.threads: Dict[int, QThread] = {}
         self.task_logs: Dict[int, str] = {}  # 存储任务日志
         self.active_log_dialogs: Dict[int, Any] = {} # 跟踪打开的日志窗口
-        
-        self.setWindowTitle(f"Yt-dlp GUI — 现代化视频下载管理器")
+
+        self.setWindowTitle("Yt-dlp GUI — 现代化视频下载管理器")
         self.resize(1100, 750)
-        
+
         self._setup_ui()
         self._setup_toolbar()
         self._apply_dark_theme()
@@ -70,19 +66,19 @@ class MainWindow(QMainWindow):
         self.table_panel.setObjectName("table_panel")
         panel_layout = QVBoxLayout(self.table_panel)
         panel_layout.setContentsMargins(0, 0, 0, 0) # 去掉内边距，使表格填充满面板
-        
+
         # 下载列表表格
         self.table = QTableWidget()
         self.table.setColumnCount(5) # 名称, 状态, 进度, 速度, 剩余时间
         self.table.setHorizontalHeaderLabels(["名称", "状态", "进度", "速度", "剩余时间"])
-        
+
         self.table.verticalHeader().setVisible(False)
         header = self.table.horizontalHeader()
         # 允许用户手动拖动伸缩列宽
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         # 默认填充满宽度
         header.setStretchLastSection(True)
-        
+
         # 设置初始列宽
         self.table.setColumnWidth(0, 350)  # 名称
         self.table.setColumnWidth(1, 120)  # 状态
@@ -96,16 +92,16 @@ class MainWindow(QMainWindow):
         self.table.setShowGrid(False)
         self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.table.verticalHeader().setDefaultSectionSize(36)
-        
+
         # 启用点击表头排序
         self.table.setSortingEnabled(True)
-        
+
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
-        
+
         panel_layout.addWidget(self.table)
         main_layout.addWidget(self.table_panel)
-        
+
         # 状态栏信息
         self.status_info = QLabel(" 准备就绪")
         self.statusBar().addWidget(self.status_info)
@@ -178,7 +174,7 @@ class MainWindow(QMainWindow):
     def _add_task_to_table(self, task):
         row = self.table.rowCount()
         self.table.insertRow(row)
-        
+
         # 将 ID 存在 UserRole 中
         title = task['title'] or task['url']
         icon_color = "#4CAF50" if task['status'] == "finished" else "#FFFFFF"
@@ -186,10 +182,10 @@ class MainWindow(QMainWindow):
         title_item = QTableWidgetItem(qta.icon(icon_name, color=icon_color), title)
         title_item.setData(Qt.ItemDataRole.UserRole, task['id'])
         self.table.setItem(row, 0, title_item)
-        
+
         status_item = QTableWidgetItem(self._get_status_icon(task['status']), task['status'])
         self.table.setItem(row, 1, status_item)
-        
+
         pbar_container = QWidget()
         pbar_container.setStyleSheet("background: transparent;")
         pbar_layout = QVBoxLayout(pbar_container)
@@ -198,7 +194,7 @@ class MainWindow(QMainWindow):
         pbar.setValue(task['progress'] or 0)
         pbar_layout.addWidget(pbar)
         self.table.setCellWidget(row, 2, pbar_container)
-        
+
         self.table.setItem(row, 3, QTableWidgetItem(task['speed'] or "--"))
         self.table.setItem(row, 4, QTableWidgetItem(task['eta'] or "--"))
 
@@ -210,7 +206,7 @@ class MainWindow(QMainWindow):
         start_action = menu.addAction(qta.icon("fa5s.play", color="#FFFFFF"), "开始 / 重试")
         stop_action = menu.addAction(qta.icon("fa5s.stop", color="#FFFFFF"), "停止")
         delete_action = menu.addAction(qta.icon("fa5s.trash-alt", color="#FFFFFF"), "删除任务")
-        
+
         action = menu.exec(self.table.viewport().mapToGlobal(pos))
         if action == open_folder_action:
             self._open_task_folder()
@@ -225,10 +221,12 @@ class MainWindow(QMainWindow):
 
     def _open_task_folder(self):
         row = self.table.currentRow()
-        if row < 0: return
+        if row < 0:
+            return
         task_id = self._get_task_id_from_row(row)
-        if not task_id: return
-        
+        if not task_id:
+            return
+
         task = self.db.get_task(task_id)
         if task and task['save_path']:
             path = task['save_path']
@@ -239,18 +237,20 @@ class MainWindow(QMainWindow):
 
     def _view_selected_task_log(self):
         row = self.table.currentRow()
-        if row < 0: return
+        if row < 0:
+            return
         task_id = self._get_task_id_from_row(row)
-        if not task_id: return
-        
+        if not task_id:
+            return
+
         title = self.table.item(row, 0).text()
-        
+
         # 如果窗口已打开，则置顶
         if task_id in self.active_log_dialogs:
             self.active_log_dialogs[task_id].raise_()
             self.active_log_dialogs[task_id].activateWindow()
             return
-            
+
         dialog = LogDialog(task_id, title, self)
         dialog.set_initial_logs(self.task_logs.get(task_id, "暂无日志信息...\n"))
         dialog.finished.connect(lambda: self.active_log_dialogs.pop(task_id, None))
@@ -262,14 +262,15 @@ class MainWindow(QMainWindow):
         dialog = AddTaskDialog(self)
         if dialog.exec():
             task_data = dialog.get_task_data()
-            if not task_data['url']: return
+            if not task_data['url']:
+                return
             task_id = self.db.add_task(task_data)
             task = self.db.get_task(task_id)
-            
+
             self.table.setSortingEnabled(False)
             self._add_task_to_table(task)
             self.table.setSortingEnabled(True)
-            
+
             self._start_task(task_id)
 
     def _get_task_id_from_row(self, row):
@@ -280,12 +281,15 @@ class MainWindow(QMainWindow):
         rows = set(index.row() for index in self.table.selectedIndexes())
         for row in rows:
             tid = self._get_task_id_from_row(row)
-            if tid: self._start_task(tid)
+            if tid:
+                self._start_task(tid)
 
     def _start_task(self, task_id):
-        if task_id in self.threads: return
+        if task_id in self.threads:
+            return
         task = self.db.get_task(task_id)
-        if not task: return
+        if not task:
+            return
 
         self.db.update_task(task_id, {"status": "downloading"})
         self._update_table_row(task_id, {"status": "downloading"})
@@ -307,7 +311,7 @@ class MainWindow(QMainWindow):
         worker.finished.connect(self._on_finished)
         worker.log_message.connect(self._on_log) # 连接日志信号
         thread.started.connect(worker.run)
-        
+
         self.threads[task_id] = thread
         self.workers[task_id] = worker
         thread.start()
@@ -321,14 +325,17 @@ class MainWindow(QMainWindow):
 
     def _delete_selected_task(self):
         indices = self.table.selectionModel().selectedRows()
-        if not indices: return
-        
+        if not indices:
+            return
+
         confirm = QMessageBox.question(self, "确认删除", f"确定要删除选中的 {len(indices)} 个任务吗？")
         if confirm == QMessageBox.StandardButton.Yes:
             for index in reversed(sorted(indices, key=lambda x: x.row())):
                 tid = self._get_task_id_from_row(index.row())
-                if tid and tid in self.threads: continue
-                if tid: self.db.delete_task(tid)
+                if tid and tid in self.threads:
+                    continue
+                if tid:
+                    self.db.delete_task(tid)
                 self.table.removeRow(index.row())
             self._update_status_counts()
 
@@ -346,24 +353,31 @@ class MainWindow(QMainWindow):
                     pcont = self.table.cellWidget(row, 2)
                     if pcont:
                         pbar = pcont.findChild(QProgressBar)
-                        if pbar: pbar.setValue(data['progress'])
-                if 'speed' in data: self.table.item(row, 3).setText(data['speed'])
-                if 'eta' in data: self.table.item(row, 4).setText(data['eta'])
-                if 'title' in data: self.table.item(row, 0).setText(data['title'])
+                        if pbar:
+                            pbar.setValue(data['progress'])
+                if 'speed' in data:
+                    self.table.item(row, 3).setText(data['speed'])
+                if 'eta' in data:
+                    self.table.item(row, 4).setText(data['eta'])
+                if 'title' in data:
+                    self.table.item(row, 0).setText(data['title'])
                 break
 
     def _clean_ansi(self, text):
         """清除 ANSI 转义代码 (如 [0;32m)"""
-        if not isinstance(text, str): return text
+        if not isinstance(text, str):
+            return text
         import re
         ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
         return ansi_escape.sub('', text).strip()
 
     def _format_speed(self, speed):
         """格式化下载速度"""
-        if speed is None: return "--"
-        if isinstance(speed, str): return self._clean_ansi(speed)
-        
+        if speed is None:
+            return "--"
+        if isinstance(speed, str):
+            return self._clean_ansi(speed)
+
         # 处理数值类型
         for unit in ['B/s', 'KB/s', 'MB/s', 'GB/s']:
             if speed < 1024.0:
@@ -373,9 +387,11 @@ class MainWindow(QMainWindow):
 
     def _format_eta(self, seconds):
         """格式化剩余时间"""
-        if seconds is None: return "--"
-        if isinstance(seconds, str): return self._clean_ansi(seconds)
-        
+        if seconds is None:
+            return "--"
+        if isinstance(seconds, str):
+            return self._clean_ansi(seconds)
+
         # 处理数值类型 (秒)
         try:
             seconds = int(seconds)
@@ -398,29 +414,29 @@ class MainWindow(QMainWindow):
         if data['status'] == 'downloading':
             total = data.get('total_bytes') or data.get('total_bytes_estimate')
             downloaded = data.get('downloaded_bytes')
-            
+
             # 计算进度百分比
             progress = 0
             if total and downloaded:
                 progress = int(downloaded / total * 100)
-            
+
             # 优先使用 yt-dlp 提供的字符串，否则手动格式化原始数值
             speed_str = data.get('speed_str') or data.get('_speed_str')
             if speed_str:
                 speed_str = self._clean_ansi(speed_str)
             else:
                 speed_str = self._format_speed(data.get('speed'))
-            
+
             eta_str = data.get('eta_str') or data.get('_eta_str')
             if eta_str:
                 eta_str = self._clean_ansi(eta_str)
             else:
                 eta_str = self._format_eta(data.get('eta'))
-            
+
             # 始终更新 UI
             self._update_table_row(task_id, {
-                "progress": progress, 
-                "speed": speed_str, 
+                "progress": progress,
+                "speed": speed_str,
                 "eta": eta_str
             })
         elif data['status'] == 'merging':
@@ -431,7 +447,7 @@ class MainWindow(QMainWindow):
         # 存储日志
         current_logs = self.task_logs.get(task_id, "")
         self.task_logs[task_id] = current_logs + msg + "\n"
-        
+
         # 如果日志窗口打开，实时更新
         if task_id in self.active_log_dialogs:
             self.active_log_dialogs[task_id].append_log(msg)
@@ -441,19 +457,20 @@ class MainWindow(QMainWindow):
         status = "finished" if success else ("cancelled" if "用户取消" in message else "error")
         # 完成时清空速度和剩余时间
         updates = {
-            "status": status, 
+            "status": status,
             "progress": 100 if success else 0,
             "speed": "--",
             "eta": "--"
         }
         self.db.update_task(task_id, updates)
         self._update_table_row(task_id, updates)
-        
+
         if task_id in self.threads:
             self.threads[task_id].quit()
             self.threads[task_id].wait()
             del self.threads[task_id]
-        if task_id in self.workers: del self.workers[task_id]
+        if task_id in self.workers:
+            del self.workers[task_id]
 
 def run_gui():
     app = QApplication(sys.argv)

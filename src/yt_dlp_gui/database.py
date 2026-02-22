@@ -1,7 +1,6 @@
 import sqlite3
 import os
 from typing import Any, List, Dict
-from datetime import datetime
 
 class Database:
     def __init__(self, db_path: str = None):
@@ -44,8 +43,8 @@ class Database:
     def add_task(self, task_data: Dict[str, Any]) -> int:
         query = """
             INSERT INTO tasks (
-                url, title, status, save_path, format_preset, proxy, 
-                concurrent_fragments, write_subs, download_playlist, 
+                url, title, status, save_path, format_preset, proxy,
+                concurrent_fragments, write_subs, download_playlist,
                 playlist_items, playlist_random, max_downloads
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
@@ -71,11 +70,11 @@ class Database:
     def update_task(self, task_id: int, updates: Dict[str, Any]):
         if not updates:
             return
-        
+
         columns = [f"{k} = ?" for k in updates.keys()]
         query = f"UPDATE tasks SET {', '.join(columns)} WHERE id = ?"
         params = list(updates.values()) + [task_id]
-        
+
         with self._get_connection() as conn:
             conn.execute(query, params)
             conn.commit()

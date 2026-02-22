@@ -103,7 +103,7 @@ class DownloadWorker(QObject):
         if self.proxy:
             self.log_message.emit(self.task_id, f"使用代理: {self.proxy}")
             base_options["proxy"] = self.proxy
-        
+
         if self.concurrent_fragments is not None:
             base_options["concurrent_fragments"] = self.concurrent_fragments
 
@@ -124,7 +124,7 @@ class DownloadWorker(QObject):
         try:
             with yt_dlp.YoutubeDL(base_options) as ydl:
                 ydl.extract_info(self.url, download=True)
-            
+
             if self._is_cancelled:
                  self.finished.emit(self.task_id, False, "用户取消")
             else:
