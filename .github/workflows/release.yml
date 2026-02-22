@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on tags like v1.0.0
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: yt-dlp-qt-gui-linux.tar.gz
+            asset_name: yt-dlp-qt-gui-linux
+          - os: macos-latest
+            artifact_name: yt-dlp-qt-gui-macos.zip
+            asset_name: yt-dlp-qt-gui-macos
+          - os: windows-latest
+            artifact_name: yt-dlp-qt-gui-windows.zip
+            asset_name: yt-dlp-qt-gui-windows
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libegl1 \
+            libxkbcommon-x11-0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-xinerama0 \
+            libxcb-xfixes0 \
+            xvfb \
+            ffmpeg
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Build executable
+        run: uv run python build.py
+
+      - name: Archive build (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r ../${{ matrix.artifact_name }} yt-dlp-qt-gui.app
+
+      - name: Archive build (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd dist
+          Compress-Archive -Path yt-dlp-qt-gui -DestinationPath ../${{ matrix.artifact_name }}
+
+      - name: Archive build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd dist
+          tar -czvf ../${{ matrix.artifact_name }} yt-dlp-qt-gui
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.artifact_name }}
+          retention-days: 5
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: yt-dlp-qt-gui-windows
+          path: .
+
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: yt-dlp-qt-gui-macos
+          path: .
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: yt-dlp-qt-gui-linux
+          path: .
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            yt-dlp-qt-gui-windows.zip
+            yt-dlp-qt-gui-macos.zip
+            yt-dlp-qt-gui-linux.tar.gz
+          generate_release_notes: true
