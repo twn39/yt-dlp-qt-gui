@@ -58,7 +58,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='logo.icns',
+    icon='logo.ico' if sys.platform.startswith('win') else 'logo.icns',
 )
 
 # 收集所有输出到目录 (Standard for macOS bundles)
