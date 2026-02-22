@@ -62,6 +62,8 @@ jobs:
         run: uv sync --dev
 
       - name: Build executable
+        env:
+          PYTHONIOENCODING: utf-8
         run: uv run python build.py
 
       - name: Archive build (macOS)
