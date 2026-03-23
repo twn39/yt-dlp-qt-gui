@@ -20,7 +20,7 @@ def setup_environment():
 
     # 也可以添加打包后的内部路径 (如果将来决定把 ffmpeg 塞进 app 包)
     if getattr(sys, 'frozen', False):
-        bundle_dir = sys._MEIPASS
+        bundle_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
         extra_paths.append(bundle_dir)
 
     for p in extra_paths:

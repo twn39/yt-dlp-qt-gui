@@ -1,9 +1,9 @@
 import sqlite3
 import os
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 
 class Database:
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
             config_dir = os.path.expanduser("~/.yt-dlp-gui")
             os.makedirs(config_dir, exist_ok=True)
@@ -90,7 +90,7 @@ class Database:
             cursor = conn.execute("SELECT * FROM tasks ORDER BY created_at DESC")
             return [dict(row) for row in cursor.fetchall()]
 
-    def get_task(self, task_id: int) -> Dict[str, Any]:
+    def get_task(self, task_id: int) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))

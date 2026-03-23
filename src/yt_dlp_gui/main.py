@@ -243,7 +243,8 @@ class MainWindow(QMainWindow):
         if not task_id:
             return
 
-        title = self.table.item(row, 0).text()
+        item0 = self.table.item(row, 0)
+        title = item0.text() if item0 else "未知任务"
 
         # 如果窗口已打开，则置顶
         if task_id in self.active_log_dialogs:
@@ -344,11 +345,15 @@ class MainWindow(QMainWindow):
             if self._get_task_id_from_row(row) == task_id:
                 if 'status' in data:
                     st = data['status']
-                    self.table.item(row, 1).setIcon(self._get_status_icon(st))
-                    self.table.item(row, 1).setText(st)
+                    item1 = self.table.item(row, 1)
+                    if item1:
+                        item1.setIcon(self._get_status_icon(st))
+                        item1.setText(st)
                     # 如果完成，第一列的图标也变绿
                     if st == "finished":
-                        self.table.item(row, 0).setIcon(qta.icon("fa5s.file-video", color="#4CAF50"))
+                        item0 = self.table.item(row, 0)
+                        if item0:
+                            item0.setIcon(qta.icon("fa5s.file-video", color="#4CAF50"))
                 if 'progress' in data:
                     pcont = self.table.cellWidget(row, 2)
                     if pcont:
@@ -356,11 +361,17 @@ class MainWindow(QMainWindow):
                         if pbar:
                             pbar.setValue(data['progress'])
                 if 'speed' in data:
-                    self.table.item(row, 3).setText(data['speed'])
+                    item3 = self.table.item(row, 3)
+                    if item3:
+                        item3.setText(data['speed'])
                 if 'eta' in data:
-                    self.table.item(row, 4).setText(data['eta'])
+                    item4 = self.table.item(row, 4)
+                    if item4:
+                        item4.setText(data['eta'])
                 if 'title' in data:
-                    self.table.item(row, 0).setText(data['title'])
+                    item0 = self.table.item(row, 0)
+                    if item0:
+                        item0.setText(data['title'])
                 break
 
     def _clean_ansi(self, text):
