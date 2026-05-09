@@ -1,11 +1,13 @@
 import os
 
-from PySide6.QtCore import QStandardPaths
-from PySide6.QtGui import QFont
+import qtawesome as qta
+from PySide6.QtCore import QStandardPaths, Qt, QUrl
+from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QFileDialog,
+    QFrame,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -162,3 +164,79 @@ class AddTaskDialog(QDialog):
             "playlist_items": self.playlist_items_input.text().strip() or None,
             "max_downloads": int(self.max_downloads_input.text()) if self.max_downloads_input.text().isdigit() else None,
         }
+
+
+GITHUB_URL = "https://github.com/twn39/yt-dlp-qt-gui"
+
+
+class AboutDialog(QDialog):
+    """现代化「关于」对话框，包含项目信息和 GitHub 链接"""
+
+    def __init__(self, version: str, parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("关于 Yt-dlp GUI")
+        self.setFixedWidth(400)
+        # 去掉标题栏问号按鈕
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self._setup_ui(version)
+
+    def _setup_ui(self, version: str) -> None:
+        from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(14)
+        layout.setContentsMargins(36, 28, 36, 24)
+
+        # 应用图标
+        icon_label = QLabel()
+        icon_label.setPixmap(qta.icon("fa5s.cloud-download-alt", color="#4A90E2").pixmap(56, 56))
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icon_label)
+
+        # 应用名称
+        name_label = QLabel("Yt-dlp GUI")
+        name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        name_label.setStyleSheet("font-size: 20pt; font-weight: bold; color: #E0E0E0;")
+        layout.addWidget(name_label)
+
+        # 副标题 + 版本
+        subtitle_label = QLabel(f"现代化视频下载管理器 · v{version}")
+        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle_label.setStyleSheet("font-size: 9pt; color: #888888;")
+        layout.addWidget(subtitle_label)
+
+        # 分隔线
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet("color: #2A2A2A;")
+        layout.addWidget(sep)
+
+        # 简介
+        desc_label = QLabel(
+            "基于 yt-dlp 构建的开源视频下载工具\n"
+            "支持 YouTube、Bilibili、Vimeo 等数千个视频平台"
+        )
+        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("font-size: 9pt; color: #AAAAAA;")
+        layout.addWidget(desc_label)
+
+        # GitHub 链接（点击打开浏览器）
+        github_btn = QPushButton(
+            qta.icon("fa5b.github", color="#BBBBBB"),
+            f"  {GITHUB_URL.removeprefix('https://')}",
+        )
+        github_btn.setStyleSheet(
+            "QPushButton { background: transparent; border: 1px solid #2A2A2A;"
+            " border-radius: 6px; padding: 6px 12px; color: #4A90E2; font-size: 9pt; }"
+            "QPushButton:hover { border-color: #4A90E2; color: #6AAFE8; background: #1A2A3A; }"
+        )
+        github_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        github_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_URL)))
+        layout.addWidget(github_btn)
+
+        # 关闭按鈕
+        btn_close = QPushButton("关闭")
+        btn_close.setMinimumHeight(36)
+        btn_close.clicked.connect(self.accept)
+        layout.addWidget(btn_close)

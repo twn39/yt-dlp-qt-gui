@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
 
 from .config import STYLESHEET_FILE
 from .database import Database
-from .dialogs import AddTaskDialog, LogDialog
+from .dialogs import AboutDialog, AddTaskDialog, LogDialog
 from .worker import DownloadWorker
 
 
@@ -167,7 +167,7 @@ class MainWindow(QMainWindow):
         toolbar.addAction(delete_action)
 
         info_action = QAction(qta.icon("fa5s.info-circle", color="#FFFFFF"), "关于", self)
-        info_action.triggered.connect(lambda: QMessageBox.information(self, "关于", "Yt-dlp GUI\n现代化视频下载管理器"))
+        info_action.triggered.connect(self._show_about_dialog)
         toolbar.addAction(info_action)
 
         # 排序控件：弹性间隔 + QToolButton+QMenu，风格与左侧工具栏按鈕完全一致
@@ -213,6 +213,10 @@ class MainWindow(QMainWindow):
         qss = load_stylesheet()
         if qss:
             self.setStyleSheet(qss)
+
+    def _show_about_dialog(self) -> None:
+        """显示「关于」对话框"""
+        AboutDialog(version=__version__, parent=self).exec()
 
     def _on_sort_changed(self, label: str) -> None:
         """排序选项变更时更新按鈕文字并重新加载"""
