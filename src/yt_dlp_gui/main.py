@@ -173,6 +173,7 @@ class MainWindow(QMainWindow):
         # 排序控件：弹性间隔 + QToolButton+QMenu，风格与左侧工具栏按鈕完全一致
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        spacer.setStyleSheet("background: transparent;")  # 避免继承 QWidget 的 #1E1E1E 而与工具栏背景不符
         toolbar.addWidget(spacer)
 
         self.sort_button = QToolButton(self)

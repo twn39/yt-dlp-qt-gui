@@ -40,6 +40,14 @@ QToolButton:hover {
     color: #FFFFFF;
 }
 
+/* 隐藏 InstantPopup 模式下 Qt 自动在右下角渲染的菜单指示箭头
+   排序按钮的标签文字本身已含方向符号（↓↑→），无需重复 */
+QToolButton::menu-indicator {
+    image: none;
+    width: 0;
+    height: 0;
+}
+
 /* QPushButton */
 QPushButton {
     background-color: #2A2A2A;
