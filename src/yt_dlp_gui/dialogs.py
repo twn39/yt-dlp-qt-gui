@@ -175,41 +175,45 @@ class AboutDialog(QDialog):
     def __init__(self, version: str, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle("关于 Yt-dlp GUI")
-        self.setFixedWidth(400)
-        # 去掉标题栏问号按鈕
+        self.setFixedSize(380, 330)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self._setup_ui(version)
 
     def _setup_ui(self, version: str) -> None:
-        from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout
+        from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(14)
-        layout.setContentsMargins(36, 28, 36, 24)
+        layout.setSpacing(10)
+        layout.setContentsMargins(32, 24, 32, 20)
 
-        # 应用图标
-        icon_label = QLabel()
-        icon_label.setPixmap(qta.icon("fa5s.cloud-download-alt", color="#4A90E2").pixmap(56, 56))
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(icon_label)
+        # 应用图标 —— 固定容器尺寸避免被布局裁剪
+        icon_container = QLabel()
+        icon_container.setFixedSize(64, 64)
+        icon_container.setPixmap(
+            qta.icon("fa5s.cloud-download-alt", color="#4A90E2").pixmap(48, 48)
+        )
+        icon_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icon_container, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        # 应用名称
+        # 应用名称（与应用主字号协调：13pt，粗体）
         name_label = QLabel("Yt-dlp GUI")
         name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name_label.setStyleSheet("font-size: 20pt; font-weight: bold; color: #E0E0E0;")
+        name_label.setStyleSheet("font-size: 15pt; font-weight: bold; color: #E0E0E0;")
         layout.addWidget(name_label)
 
         # 副标题 + 版本
-        subtitle_label = QLabel(f"现代化视频下载管理器 · v{version}")
+        subtitle_label = QLabel(f"v{version}  ·  现代化视频下载管理器")
         subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle_label.setStyleSheet("font-size: 9pt; color: #888888;")
         layout.addWidget(subtitle_label)
 
-        # 分隔线
+        # 分隔线（QFrame HLine 用 background-color 而非 color）
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("color: #2A2A2A;")
+        sep.setFixedHeight(1)
+        sep.setStyleSheet("background-color: #2A2A2A; border: none;")
         layout.addWidget(sep)
+        layout.addSpacing(2)
 
         # 简介
         desc_label = QLabel(
@@ -218,25 +222,32 @@ class AboutDialog(QDialog):
         )
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("font-size: 9pt; color: #AAAAAA;")
+        desc_label.setStyleSheet("font-size: 9pt; color: #AAAAAA; line-height: 160%;")
         layout.addWidget(desc_label)
 
-        # GitHub 链接（点击打开浏览器）
+        layout.addSpacing(4)
+
+        # GitHub 链接按钮 —— 继承主题 QPushButton 样式，仅覆盖文字颜色
         github_btn = QPushButton(
-            qta.icon("fa5b.github", color="#BBBBBB"),
+            qta.icon("fa5b.github", color="#4A90E2"),
             f"  {GITHUB_URL.removeprefix('https://')}",
         )
         github_btn.setStyleSheet(
-            "QPushButton { background: transparent; border: 1px solid #2A2A2A;"
-            " border-radius: 6px; padding: 6px 12px; color: #4A90E2; font-size: 9pt; }"
-            "QPushButton:hover { border-color: #4A90E2; color: #6AAFE8; background: #1A2A3A; }"
+            "QPushButton { color: #4A90E2; font-size: 9pt; }"
+            "QPushButton:hover { color: #6AAFE8; border-color: #4A90E2; }"
         )
         github_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         github_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_URL)))
         layout.addWidget(github_btn)
 
-        # 关闭按鈕
+        # 关闭按钮行（居中，固定宽度）
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
         btn_close = QPushButton("关闭")
-        btn_close.setMinimumHeight(36)
+        btn_close.setMinimumHeight(32)
+        btn_close.setFixedWidth(100)
         btn_close.clicked.connect(self.accept)
-        layout.addWidget(btn_close)
+        btn_row.addWidget(btn_close)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
