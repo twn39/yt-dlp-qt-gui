@@ -159,12 +159,22 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
     background-color: #2A2A2A; border-radius: 3px;
 }
 
-/* 状态栏 */
+/* 状态栏 —— 背景与主面板一致，避免文字标签出现色差背景块 */
 QStatusBar {
-    background-color: #252525;
-    border-top: 1px solid #101010;
+    background-color: #1E1E1E;
+    border-top: 1px solid #151515;
     color: #888888;
     font-size: 9pt;
+}
+
+QStatusBar::item {
+    border: none;  /* 去掉状态栏 item 之间的分隔线 */
+}
+
+QStatusBar QLabel {
+    background: transparent;  /* 防止 QLabel 渲染独立背景块 */
+    color: #888888;
+    padding: 0 2px;
 }
 
 /* 输入框（对话框内的表单用） */
