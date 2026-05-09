@@ -7,9 +7,9 @@
 """
 
 import os
-import sys
-import subprocess
 import shutil
+import subprocess
+import sys
 
 
 def clean_build_dirs():
