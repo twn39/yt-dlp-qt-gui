@@ -84,14 +84,6 @@ QMenu::separator {
 
 QMenu::icon {
     left: 4px; /* 图标位置固定在左侧 */
-}
-
-QMenu::separator {
-    height: 0px;
-    background: transparent;
-}
-
-QMenu::icon {
     padding-left: 4px;
 }
 
@@ -167,8 +159,10 @@ QStatusBar {
     font-size: 9pt;
 }
 
-/* 输入框 */
-QLineEdit, QTextEdit, QComboBox {
+/* 输入框（对话框内的表单用） */
+QLineEdit,
+QTextEdit,
+QComboBox {
     background-color: #121212;
     border: 1px solid #080808;
     border-radius: 3px;

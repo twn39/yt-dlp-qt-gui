@@ -15,7 +15,6 @@ from PySide6.QtGui import QAction, QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
-    QComboBox,
     QFrame,
     QHeaderView,
     QLabel,
@@ -27,6 +26,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -170,22 +170,25 @@ class MainWindow(QMainWindow):
         info_action.triggered.connect(lambda: QMessageBox.information(self, "关于", "Yt-dlp GUI\n现代化视频下载管理器"))
         toolbar.addAction(info_action)
 
-        # 排序控件：弹性间隔 + 下拉框，靠右对齐
+        # 排序控件：弹性间隔 + QToolButton+QMenu，风格与左侧工具栏按鈕完全一致
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
 
-        sort_label = QLabel(" 排序: ")
-        sort_label.setStyleSheet("color: #BBBBBB; font-size: 9pt;")
-        toolbar.addWidget(sort_label)
+        self.sort_button = QToolButton(self)
+        self.sort_button.setIcon(qta.icon("fa5s.sort-amount-down", color="#BBBBBB"))
+        self.sort_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.sort_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.sort_button.setText(next(iter(self._sort_options)))  # 默认„创建时间 ↓“
+        self.sort_button.setToolTip("排序方式")
 
-        self.sort_combo = QComboBox()
-        self.sort_combo.setFixedWidth(110)
-        self.sort_combo.setToolTip("选择列表排序方式")
-        for label in self._sort_options:
-            self.sort_combo.addItem(label)
-        self.sort_combo.currentTextChanged.connect(self._on_sort_changed)
-        toolbar.addWidget(self.sort_combo)
+        _sort_menu = QMenu(self)
+        for _lbl in self._sort_options:
+            _sort_menu.addAction(_lbl).triggered.connect(
+                lambda checked=False, lbl=_lbl: self._on_sort_changed(lbl)
+            )
+        self.sort_button.setMenu(_sort_menu)
+        toolbar.addWidget(self.sort_button)
 
     def _update_status_counts(self):
         total = self.table.rowCount()
@@ -211,15 +214,18 @@ class MainWindow(QMainWindow):
             self.setStyleSheet(qss)
 
     def _on_sort_changed(self, label: str) -> None:
-        """排序下拉框变更时重新从 DB 加载（DB 层排序，不依赖 QTableWidget 排序）"""
+        """排序选项变更时更新按鈕文字并重新加载"""
+        self.sort_button.setText(label)
         self._load_tasks_from_db()
 
     def _load_tasks_from_db(self) -> None:
         """从 DB 加载所有任务并重建表格和 row 映射"""
-        sort_col, sort_dir = self._sort_options.get(
-            self.sort_combo.currentText() if hasattr(self, "sort_combo") else "创建时间 ↓",
-            ("created_at", "DESC"),
+        current = (
+            self.sort_button.text()
+            if hasattr(self, "sort_button")
+            else next(iter(self._sort_options))
         )
+        sort_col, sort_dir = self._sort_options.get(current, ("created_at", "DESC"))
         self.table.setRowCount(0)
         self._task_row_map.clear()
         tasks = self.db.get_all_tasks(sort_col=sort_col, sort_dir=sort_dir)
