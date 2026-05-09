@@ -4,8 +4,15 @@ PyInstaller 配置文件 - macOS 优化版
 针对 macOS 平台进行优化，生成标准的 .app 文件夹结构，更便于分发和后续代码签名。
 """
 
+import importlib.metadata
 import sys
 import os
+
+# 从已安装的包元数据读取版本（与 pyproject.toml 保持同步）
+try:
+    _app_version = importlib.metadata.version("yt-dlp-qt-gui")
+except importlib.metadata.PackageNotFoundError:
+    _app_version = "0.0.0-dev"
 
 block_cipher = None
 
@@ -82,8 +89,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleDisplayName': 'yt-dlp GUI',
         'CFBundleName': 'yt-dlp-qt-gui',
-        'CFBundleShortVersionString': '1.0.0',
-        'CFBundleVersion': '1.0.0',
+        'CFBundleShortVersionString': _app_version,
+        'CFBundleVersion': _app_version,
         'LSApplicationCategoryType': 'public.app-category.video',
         'NSHighResolutionCapable': True,
         'NSRequiresAquaSystemAppearance': False,  # 允许深色模式

@@ -1,6 +1,12 @@
 import sys
 import os
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from typing import Any, Dict
+
+try:
+    __version__ = _pkg_version("yt-dlp-qt-gui")
+except PackageNotFoundError:
+    __version__ = "0.0.0-dev"
 import click
 import qtawesome as qta
 from PySide6.QtWidgets import (
@@ -44,7 +50,8 @@ class MainWindow(QMainWindow):
         self.workers: Dict[int, DownloadWorker] = {}
         self.threads: Dict[int, QThread] = {}
         self.task_logs: Dict[int, str] = {}  # 存储任务日志
-        self.active_log_dialogs: Dict[int, Any] = {} # 跟踪打开的日志窗口
+        self.active_log_dialogs: Dict[int, Any] = {}  # 跟踪打开的日志窗口
+        self._pending_delete_tids: set[int] = set()  # 「停止后删除」的挂起任务 ID
 
         self.setWindowTitle("Yt-dlp GUI — 现代化视频下载管理器")
         self.resize(1100, 750)
@@ -310,8 +317,10 @@ class MainWindow(QMainWindow):
         worker.moveToThread(thread)
         worker.progress.connect(self._on_progress)
         worker.finished.connect(self._on_finished)
-        worker.log_message.connect(self._on_log) # 连接日志信号
+        worker.log_message.connect(self._on_log)  # 连接日志信号
         thread.started.connect(worker.run)
+        # 线程退出后异步清理资源，避免在 _on_finished 中调用 thread.wait() 阻塞主线程
+        thread.finished.connect(lambda tid=task_id: self._cleanup_thread(tid))
 
         self.threads[task_id] = thread
         self.workers[task_id] = worker
@@ -324,21 +333,55 @@ class MainWindow(QMainWindow):
             if tid and tid in self.workers:
                 self.workers[tid].cancel()
 
-    def _delete_selected_task(self):
+    def _delete_selected_task(self) -> None:
         indices = self.table.selectionModel().selectedRows()
         if not indices:
             return
 
-        confirm = QMessageBox.question(self, "确认删除", f"确定要删除选中的 {len(indices)} 个任务吗？")
-        if confirm == QMessageBox.StandardButton.Yes:
-            for index in reversed(sorted(indices, key=lambda x: x.row())):
-                tid = self._get_task_id_from_row(index.row())
-                if tid and tid in self.threads:
-                    continue
-                if tid:
-                    self.db.delete_task(tid)
-                self.table.removeRow(index.row())
-            self._update_status_counts()
+        # 分类：静止任务（可直接删） vs 运行中任务（需先停止）
+        idle_indices: list = []
+        running_tids: list[int] = []
+        for index in indices:
+            tid = self._get_task_id_from_row(index.row())
+            if tid is None:
+                continue
+            if tid in self.threads:
+                running_tids.append(tid)
+            else:
+                idle_indices.append(index)
+
+        if running_tids:
+            # 有运行中任务：给出明确提示，提供「停止并删除」选项
+            msg = (
+                f"选中的 {len(indices)} 个任务中，"
+                f"有 {len(running_tids)} 个正在下载。\n\n"
+                f"是否立即停止并删除全部 {len(indices)} 个任务？"
+            )
+            confirm = QMessageBox.question(
+                self,
+                "确认停止并删除",
+                msg,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if confirm != QMessageBox.StandardButton.Yes:
+                return
+            # 取消运行中任务，实际行删除由 _cleanup_thread 中的 pending 机制处理
+            for tid in running_tids:
+                if tid in self.workers:
+                    self.workers[tid].cancel()
+            self._pending_delete_tids.update(running_tids)
+        else:
+            # 无运行中任务：普通确认即可
+            confirm = QMessageBox.question(
+                self,
+                "确认删除",
+                f"确定要删除选中的 {len(idle_indices)} 个任务吗？",
+            )
+            if confirm != QMessageBox.StandardButton.Yes:
+                return
+
+        self._delete_idle_rows(idle_indices)
+        self._update_status_counts()
 
     def _update_table_row(self, task_id, data):
         for row in range(self.table.rowCount()):
@@ -464,24 +507,64 @@ class MainWindow(QMainWindow):
             self.active_log_dialogs[task_id].append_log(msg)
 
     @Slot(int, bool, str)
-    def _on_finished(self, task_id, success, message):
+    def _on_finished(self, task_id: int, success: bool, message: str) -> None:
         status = "finished" if success else ("cancelled" if "用户取消" in message else "error")
         # 完成时清空速度和剩余时间
         updates = {
             "status": status,
             "progress": 100 if success else 0,
             "speed": "--",
-            "eta": "--"
+            "eta": "--",
         }
         self.db.update_task(task_id, updates)
         self._update_table_row(task_id, updates)
 
+        # 只发出退出请求，实际资源清理由 thread.finished → _cleanup_thread 异步完成
+        # 严禁在此处调用 thread.wait()，否则会阻塞主线程（GUI 线程）
         if task_id in self.threads:
             self.threads[task_id].quit()
-            self.threads[task_id].wait()
-            del self.threads[task_id]
-        if task_id in self.workers:
-            del self.workers[task_id]
+
+    def _cleanup_thread(self, task_id: int) -> None:
+        """线程退出后异步清理资源（由 thread.finished 信号触发，运行在主线程）"""
+        thread = self.threads.pop(task_id, None)
+        self.workers.pop(task_id, None)
+        if thread is not None:
+            thread.deleteLater()  # 让 Qt 事件循环负责内存回收
+
+        # 处理「停止后删除」的挂起请求
+        if task_id in self._pending_delete_tids:
+            self._pending_delete_tids.discard(task_id)
+            self.db.delete_task(task_id)
+            self._remove_table_row_by_task_id(task_id)
+            self._update_status_counts()
+
+    def _delete_idle_rows(self, indices: list) -> None:
+        """删除非运行中任务的表格行和 DB 记录（逆序删除避免行号偏移）"""
+        for index in reversed(sorted(indices, key=lambda x: x.row())):
+            tid = self._get_task_id_from_row(index.row())
+            if tid:
+                self.db.delete_task(tid)
+            self.table.removeRow(index.row())
+
+    def _remove_table_row_by_task_id(self, task_id: int) -> None:
+        """按 task_id 查找并删除表格行"""
+        for row in range(self.table.rowCount()):
+            if self._get_task_id_from_row(row) == task_id:
+                self.table.removeRow(row)
+                break
+
+    def closeEvent(self, event) -> None:  # type: ignore[override]
+        """窗口关闭时优雅停止所有任务并释放资源"""
+        # 取消所有运行中的下载
+        for worker in list(self.workers.values()):
+            worker.cancel()
+        # 等待线程退出（关闭场景允许短暂阻塞，最多 3 秒/线程）
+        for thread in list(self.threads.values()):
+            thread.quit()
+            thread.wait(3000)
+        # 显式关闭持久数据库连接
+        self.db.close()
+        event.accept()
 
 def run_gui():
     app = QApplication(sys.argv)
@@ -490,8 +573,8 @@ def run_gui():
     sys.exit(app.exec())
 
 @click.command()
-@click.version_option(version="0.2.0")
-def cli():
+@click.version_option(version=__version__)
+def cli() -> None:
     run_gui()
 
 if __name__ == "__main__":
