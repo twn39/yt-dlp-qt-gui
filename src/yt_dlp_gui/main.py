@@ -1,6 +1,7 @@
-import sys
 import os
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
+import sys
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from typing import Any, Dict
 
 try:
@@ -9,19 +10,32 @@ except PackageNotFoundError:
     __version__ = "0.0.0-dev"
 import click
 import qtawesome as qta
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QProgressBar, QMessageBox, QHeaderView, QAbstractItemView, QToolBar, QMenu, QLabel,
-    QFrame
-)
-from PySide6.QtCore import Qt, QThread, Slot, QSize, QUrl
+from PySide6.QtCore import QSize, Qt, QThread, QUrl, Slot
 from PySide6.QtGui import QAction, QDesktopServices
-
-from .worker import DownloadWorker
-from .config import (
-    STYLESHEET_FILE
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
+    QComboBox,
+    QFrame,
+    QHeaderView,
+    QLabel,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QProgressBar,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QToolBar,
+    QVBoxLayout,
+    QWidget,
 )
+
+from .config import STYLESHEET_FILE
 from .database import Database
 from .dialogs import AddTaskDialog, LogDialog
+from .worker import DownloadWorker
+
 
 def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
     """加载 QSS 样式文件"""
@@ -52,6 +66,16 @@ class MainWindow(QMainWindow):
         self.task_logs: Dict[int, str] = {}  # 存储任务日志
         self.active_log_dialogs: Dict[int, Any] = {}  # 跟踪打开的日志窗口
         self._pending_delete_tids: set[int] = set()  # 「停止后删除」的挂起任务 ID
+        # task_id → row 反向映射，使 _update_table_row 从 O(n) 降为 O(1)
+        self._task_row_map: dict[int, int] = {}
+        # 排序选项：显示文本 → (sort_col, sort_dir)
+        self._sort_options: dict[str, tuple[str, str]] = {
+            "创建时间 ↓": ("created_at", "DESC"),
+            "创建时间 ↑": ("created_at", "ASC"),
+            "名称 A→Z": ("title", "ASC"),
+            "名称 Z→A": ("title", "DESC"),
+            "状态": ("status", "ASC"),
+        }
 
         self.setWindowTitle("Yt-dlp GUI — 现代化视频下载管理器")
         self.resize(1100, 750)
@@ -100,8 +124,8 @@ class MainWindow(QMainWindow):
         self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.table.verticalHeader().setDefaultSectionSize(36)
 
-        # 启用点击表头排序
-        self.table.setSortingEnabled(True)
+        # 禁用表头点击排序：改用工具栏下拉框触发 DB 层排序，避免 row 索引失效
+        self.table.setSortingEnabled(False)
 
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
@@ -146,6 +170,23 @@ class MainWindow(QMainWindow):
         info_action.triggered.connect(lambda: QMessageBox.information(self, "关于", "Yt-dlp GUI\n现代化视频下载管理器"))
         toolbar.addAction(info_action)
 
+        # 排序控件：弹性间隔 + 下拉框，靠右对齐
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        toolbar.addWidget(spacer)
+
+        sort_label = QLabel(" 排序: ")
+        sort_label.setStyleSheet("color: #BBBBBB; font-size: 9pt;")
+        toolbar.addWidget(sort_label)
+
+        self.sort_combo = QComboBox()
+        self.sort_combo.setFixedWidth(110)
+        self.sort_combo.setToolTip("选择列表排序方式")
+        for label in self._sort_options:
+            self.sort_combo.addItem(label)
+        self.sort_combo.currentTextChanged.connect(self._on_sort_changed)
+        toolbar.addWidget(self.sort_combo)
+
     def _update_status_counts(self):
         total = self.table.rowCount()
         selected = len(set(index.row() for index in self.table.selectedIndexes()))
@@ -169,28 +210,38 @@ class MainWindow(QMainWindow):
         if qss:
             self.setStyleSheet(qss)
 
-    def _load_tasks_from_db(self):
-        self.table.setSortingEnabled(False) # 临时禁用
+    def _on_sort_changed(self, label: str) -> None:
+        """排序下拉框变更时重新从 DB 加载（DB 层排序，不依赖 QTableWidget 排序）"""
+        self._load_tasks_from_db()
+
+    def _load_tasks_from_db(self) -> None:
+        """从 DB 加载所有任务并重建表格和 row 映射"""
+        sort_col, sort_dir = self._sort_options.get(
+            self.sort_combo.currentText() if hasattr(self, "sort_combo") else "创建时间 ↓",
+            ("created_at", "DESC"),
+        )
         self.table.setRowCount(0)
-        tasks = self.db.get_all_tasks()
+        self._task_row_map.clear()
+        tasks = self.db.get_all_tasks(sort_col=sort_col, sort_dir=sort_dir)
         for task in tasks:
             self._add_task_to_table(task)
-        self.table.setSortingEnabled(True) # 恢复排序
         self._update_status_counts()
 
-    def _add_task_to_table(self, task):
+    def _add_task_to_table(self, task: dict[str, Any]) -> None:
         row = self.table.rowCount()
         self.table.insertRow(row)
+        # 写入 task_id → row 映射
+        self._task_row_map[task["id"]] = row
 
         # 将 ID 存在 UserRole 中
-        title = task['title'] or task['url']
-        icon_color = "#4CAF50" if task['status'] == "finished" else "#FFFFFF"
-        icon_name = "fa5s.file-video" if task['status'] == "finished" else "fa5s.video"
+        title = task["title"] or task["url"]
+        icon_color = "#4CAF50" if task["status"] == "finished" else "#FFFFFF"
+        icon_name = "fa5s.file-video" if task["status"] == "finished" else "fa5s.video"
         title_item = QTableWidgetItem(qta.icon(icon_name, color=icon_color), title)
-        title_item.setData(Qt.ItemDataRole.UserRole, task['id'])
+        title_item.setData(Qt.ItemDataRole.UserRole, task["id"])
         self.table.setItem(row, 0, title_item)
 
-        status_item = QTableWidgetItem(self._get_status_icon(task['status']), task['status'])
+        status_item = QTableWidgetItem(self._get_status_icon(task["status"]), task["status"])
         self.table.setItem(row, 1, status_item)
 
         pbar_container = QWidget()
@@ -198,12 +249,12 @@ class MainWindow(QMainWindow):
         pbar_layout = QVBoxLayout(pbar_container)
         pbar_layout.setContentsMargins(15, 6, 15, 6)
         pbar = QProgressBar()
-        pbar.setValue(task['progress'] or 0)
+        pbar.setValue(task["progress"] or 0)
         pbar_layout.addWidget(pbar)
         self.table.setCellWidget(row, 2, pbar_container)
 
-        self.table.setItem(row, 3, QTableWidgetItem(task['speed'] or "--"))
-        self.table.setItem(row, 4, QTableWidgetItem(task['eta'] or "--"))
+        self.table.setItem(row, 3, QTableWidgetItem(task["speed"] or "--"))
+        self.table.setItem(row, 4, QTableWidgetItem(task["eta"] or "--"))
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
@@ -266,19 +317,18 @@ class MainWindow(QMainWindow):
         dialog.show()
 
     @Slot()
-    def _show_add_dialog(self):
+    def _show_add_dialog(self) -> None:
         dialog = AddTaskDialog(self)
         if dialog.exec():
             task_data = dialog.get_task_data()
-            if not task_data['url']:
+            if not task_data["url"]:
                 return
             task_id = self.db.add_task(task_data)
             task = self.db.get_task(task_id)
+            if task is None:
+                return
 
-            self.table.setSortingEnabled(False)
             self._add_task_to_table(task)
-            self.table.setSortingEnabled(True)
-
             self._start_task(task_id)
 
     def _get_task_id_from_row(self, row):
@@ -383,39 +433,40 @@ class MainWindow(QMainWindow):
         self._delete_idle_rows(idle_indices)
         self._update_status_counts()
 
-    def _update_table_row(self, task_id, data):
-        for row in range(self.table.rowCount()):
-            if self._get_task_id_from_row(row) == task_id:
-                if 'status' in data:
-                    st = data['status']
-                    item1 = self.table.item(row, 1)
-                    if item1:
-                        item1.setIcon(self._get_status_icon(st))
-                        item1.setText(st)
-                    # 如果完成，第一列的图标也变绿
-                    if st == "finished":
-                        item0 = self.table.item(row, 0)
-                        if item0:
-                            item0.setIcon(qta.icon("fa5s.file-video", color="#4CAF50"))
-                if 'progress' in data:
-                    pcont = self.table.cellWidget(row, 2)
-                    if pcont:
-                        pbar = pcont.findChild(QProgressBar)
-                        if pbar:
-                            pbar.setValue(data['progress'])
-                if 'speed' in data:
-                    item3 = self.table.item(row, 3)
-                    if item3:
-                        item3.setText(data['speed'])
-                if 'eta' in data:
-                    item4 = self.table.item(row, 4)
-                    if item4:
-                        item4.setText(data['eta'])
-                if 'title' in data:
-                    item0 = self.table.item(row, 0)
-                    if item0:
-                        item0.setText(data['title'])
-                break
+    def _update_table_row(self, task_id: int, data: dict[str, Any]) -> None:
+        """O(1) 行更新：通过 _task_row_map 直接定位，无需全表扫描"""
+        row = self._task_row_map.get(task_id)
+        if row is None:
+            return
+        if "status" in data:
+            st = data["status"]
+            item1 = self.table.item(row, 1)
+            if item1:
+                item1.setIcon(self._get_status_icon(st))
+                item1.setText(st)
+            # 如果完成，第一列的图标也变绿
+            if st == "finished":
+                item0 = self.table.item(row, 0)
+                if item0:
+                    item0.setIcon(qta.icon("fa5s.file-video", color="#4CAF50"))
+        if "progress" in data:
+            pcont = self.table.cellWidget(row, 2)
+            if pcont:
+                pbar = pcont.findChild(QProgressBar)
+                if pbar:
+                    pbar.setValue(data["progress"])
+        if "speed" in data:
+            item3 = self.table.item(row, 3)
+            if item3:
+                item3.setText(data["speed"])
+        if "eta" in data:
+            item4 = self.table.item(row, 4)
+            if item4:
+                item4.setText(data["eta"])
+        if "title" in data:
+            item0 = self.table.item(row, 0)
+            if item0:
+                item0.setText(data["title"])
 
     def _clean_ansi(self, text):
         """清除 ANSI 转义代码 (如 [0;32m)"""
@@ -538,20 +589,28 @@ class MainWindow(QMainWindow):
             self._remove_table_row_by_task_id(task_id)
             self._update_status_counts()
 
+    def _remove_row_from_map(self, deleted_row: int, task_id: int) -> None:
+        """从 _task_row_map 删除指定条目，并将该行以下所有条目的 row 值 -1"""
+        self._task_row_map.pop(task_id, None)
+        for tid in self._task_row_map:
+            if self._task_row_map[tid] > deleted_row:
+                self._task_row_map[tid] -= 1
+
     def _delete_idle_rows(self, indices: list) -> None:
         """删除非运行中任务的表格行和 DB 记录（逆序删除避免行号偏移）"""
         for index in reversed(sorted(indices, key=lambda x: x.row())):
             tid = self._get_task_id_from_row(index.row())
             if tid:
                 self.db.delete_task(tid)
+                self._remove_row_from_map(index.row(), tid)
             self.table.removeRow(index.row())
 
     def _remove_table_row_by_task_id(self, task_id: int) -> None:
-        """按 task_id 查找并删除表格行"""
-        for row in range(self.table.rowCount()):
-            if self._get_task_id_from_row(row) == task_id:
-                self.table.removeRow(row)
-                break
+        """O(1) 按 task_id 查找并删除表格行"""
+        row = self._task_row_map.get(task_id)
+        if row is not None:
+            self.table.removeRow(row)
+            self._remove_row_from_map(row, task_id)
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         """窗口关闭时优雅停止所有任务并释放资源"""

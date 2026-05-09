@@ -1,9 +1,11 @@
 import os
 from typing import Any
-from PySide6.QtCore import Signal, SignalInstance, QObject, Slot
+
 import yt_dlp
+from PySide6.QtCore import QObject, Signal, SignalInstance, Slot
 from yt_dlp.utils import DownloadCancelled
-from .config import DEFAULT_FORMAT, OUTPUT_TEMPLATE, NO_PROGRESS
+
+from .config import DEFAULT_FORMAT, NO_PROGRESS, OUTPUT_TEMPLATE
 
 
 class DownloadWorker(QObject):

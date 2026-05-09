@@ -1,4 +1,5 @@
 import pytest
+
 from yt_dlp_gui.main import MainWindow
 
 

@@ -1,12 +1,24 @@
 import os
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLineEdit, QTextEdit,
-    QPushButton, QFileDialog, QComboBox, QGroupBox, QGridLayout, QLabel
-)
+
 from PySide6.QtCore import QStandardPaths
 from PySide6.QtGui import QFont
-from .config import FORMAT_PRESETS
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+)
+
 from .components import Switch
+from .config import FORMAT_PRESETS
+
 
 class LogDialog(QDialog):
     def __init__(self, task_id, title, parent=None):

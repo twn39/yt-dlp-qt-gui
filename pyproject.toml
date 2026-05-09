@@ -70,12 +70,13 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = [
-    "F",
-    "E",
-    "W",
+    "F",   # Pyflakes
+    "E",   # pycodestyle error
+    "W",   # pycodestyle warning
+    "I",   # isort：import 排序
 ]
 ignore = [
-    "E501",   # line too long (handled by formatter)
+    "E501",  # line too long (handled by formatter)
 ]
 
 [tool.ruff.lint.isort]

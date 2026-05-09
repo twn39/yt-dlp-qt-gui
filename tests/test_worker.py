@@ -1,4 +1,5 @@
 from unittest.mock import patch
+
 from yt_dlp_gui.worker import DownloadWorker
 
 
@@ -137,8 +138,8 @@ def test_progress_hook_extensions(qtbot):
 
 def test_progress_hook_cancellation():
     """Test that _progress_hook raises DownloadCancelled when cancelled."""
-    from yt_dlp.utils import DownloadCancelled
     import pytest
+    from yt_dlp.utils import DownloadCancelled
 
     worker = DownloadWorker(task_id=1, url="url", download_path=".")
     worker.cancel()

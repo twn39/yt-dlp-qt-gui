@@ -111,9 +111,26 @@ class Database:
             self._conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
             self._conn.commit()
 
-    def get_all_tasks(self) -> list[dict[str, Any]]:
+    # 允许排序的列白名单，防止 SQL 注入
+    _SORT_COLS = frozenset({"created_at", "title", "status", "progress"})
+    _SORT_DIRS = frozenset({"ASC", "DESC"})
+
+    def get_all_tasks(
+        self,
+        sort_col: str = "created_at",
+        sort_dir: str = "DESC",
+    ) -> list[dict[str, Any]]:
+        """返回所有任务，支持 DB 层排序（代替 QTableWidget 的列排序）。
+
+        Args:
+            sort_col: 排序列，必须在 _SORT_COLS 白名单中。
+            sort_dir: 排序方向，"ASC" 或 "DESC"。
+        """
+        # 防御性校验：不在白名单内回退到默认值
+        col = sort_col if sort_col in self._SORT_COLS else "created_at"
+        direction = sort_dir if sort_dir in self._SORT_DIRS else "DESC"
         # 读操作：WAL 模式下与写操作并发安全，无需加锁
-        cursor = self._conn.execute("SELECT * FROM tasks ORDER BY created_at DESC")
+        cursor = self._conn.execute(f"SELECT * FROM tasks ORDER BY {col} {direction}")  # noqa: S608
         return [dict(row) for row in cursor.fetchall()]
 
     def get_task(self, task_id: int) -> Optional[dict[str, Any]]:

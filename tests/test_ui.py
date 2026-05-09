@@ -1,5 +1,5 @@
-from PySide6.QtWidgets import QTableWidget, QProgressBar
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QProgressBar, QTableWidget
 
 
 def test_mainwindow_has_table_widget(app_window):
