@@ -64,6 +64,7 @@ jobs:
           version: "latest"
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -83,12 +84,6 @@ jobs:
             libxcb-xinerama0 \
             libxcb-xfixes0 \
             xvfb
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         env:
