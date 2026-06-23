@@ -117,3 +117,19 @@ def test_scheduler_delete_task(mock_run, temp_db):
     scheduler.delete_task(tid1)
     assert tid1 in scheduler._pending_delete_tids
     worker_mock.cancel.assert_called_once()
+
+
+def test_task_impersonate_and_no_cookies_db(temp_db):
+    """测试任务的浏览器伪装和禁用 Cookies 属性在数据库中的持久化"""
+    task = DownloadTask(
+        url="https://example.com/v1",
+        save_path=".",
+        format_preset="best",
+        impersonate="chrome",
+        no_cookies=True,
+    )
+    tid = temp_db.add_task(task)
+    retrieved = temp_db.get_task(tid)
+    assert retrieved is not None
+    assert retrieved.impersonate == "chrome"
+    assert retrieved.no_cookies is True

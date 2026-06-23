@@ -32,6 +32,7 @@ dependencies = [
     "qtawesome>=1.4.1",
     "yt-dlp>=2026.3.17",
     "click>=8.3.3",
+    "curl-cffi>=0.15.0",
 ]
 
 

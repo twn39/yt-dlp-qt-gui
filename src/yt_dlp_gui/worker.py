@@ -29,6 +29,8 @@ class DownloadWorker(QObject):
         playlist_items: str | None = None,
         playlist_random: bool = False,
         max_downloads: int | None = None,
+        impersonate: str | None = None,
+        no_cookies: bool = False,
     ) -> None:
         """
         初始化下载工作器
@@ -51,6 +53,8 @@ class DownloadWorker(QObject):
         self.playlist_items = playlist_items
         self.playlist_random = playlist_random
         self.max_downloads = max_downloads
+        self.impersonate = impersonate
+        self.no_cookies = no_cookies
         self._is_cancelled = False
         self._log_file = None
 
@@ -136,6 +140,19 @@ class DownloadWorker(QObject):
                     base_options["playlist_random"] = True
                 if self.max_downloads is not None:
                     base_options["max_downloads"] = self.max_downloads
+
+            if self.impersonate:
+                self._write_log(f"浏览器伪装: {self.impersonate}")
+                try:
+                    from yt_dlp.networking.impersonate import ImpersonateTarget
+
+                    base_options["impersonate"] = ImpersonateTarget.from_str(self.impersonate)
+                except (ImportError, AttributeError):
+                    base_options["impersonate"] = self.impersonate
+
+            if self.no_cookies:
+                self._write_log("已启用无 Cookies 模式")
+                base_options["no_cookies"] = True
 
             base_options.update(self.ydl_opts)
 

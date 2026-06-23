@@ -146,3 +146,29 @@ def test_progress_hook_cancellation():
 
     with pytest.raises(DownloadCancelled):
         worker._progress_hook({"status": "downloading"})
+
+
+@patch("yt_dlp.YoutubeDL")
+def test_worker_run_impersonate_and_no_cookies(mock_ytdl, qtbot):
+    """Test worker.run with impersonation and no-cookies options."""
+    worker = DownloadWorker(
+        task_id=1,
+        url="url",
+        download_path=".",
+        impersonate="chrome",
+        no_cookies=True,
+    )
+
+    with qtbot.waitSignal(worker.finished, timeout=2000):
+        worker.run()
+
+    # Get the options passed to YoutubeDL
+    args, kwargs = mock_ytdl.call_args
+    opts = args[0]
+
+    impersonate_opt = opts["impersonate"]
+    if hasattr(impersonate_opt, "client"):
+        assert impersonate_opt.client == "chrome"
+    else:
+        assert impersonate_opt == "chrome"
+    assert opts["no_cookies"] is True

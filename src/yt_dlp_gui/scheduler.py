@@ -1,4 +1,3 @@
-import re
 from typing import Any, Dict, List, Set
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
@@ -6,6 +5,7 @@ from PySide6.QtCore import QObject, QThread, Signal, Slot
 from .config import remove_task_log
 from .database import Database
 from .models import DownloadTask
+from .utils import clean_ansi
 from .worker import DownloadWorker
 
 
@@ -78,6 +78,8 @@ class DownloadScheduler(QObject):
             write_subs=task.write_subs,
             download_playlist=task.download_playlist,
             playlist_items=task.playlist_items,
+            impersonate=task.impersonate,
+            no_cookies=task.no_cookies,
         )
         worker.moveToThread(thread)
 
@@ -124,9 +126,7 @@ class DownloadScheduler(QObject):
         """处理任务进度信号，更新任务标题"""
         if "info_dict" in data and data["info_dict"].get("title"):
             title = data["info_dict"]["title"]
-            # 清理 ANSI 终端序列
-            ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
-            cleaned_title = ansi_escape.sub("", title).strip()
+            cleaned_title = clean_ansi(title)
             self.db.update_task(task_id, {"title": cleaned_title})
             self.task_title_updated.emit(task_id, cleaned_title)
 

@@ -32,6 +32,7 @@ from .database import Database
 from .dialogs import AboutDialog, AddTaskDialog, LogDialog
 from .models import DownloadTask, TaskTableModel
 from .scheduler import DownloadScheduler
+from .utils import clean_ansi, format_eta, format_speed
 
 try:
     __version__ = _pkg_version("yt-dlp-qt-gui")
@@ -63,6 +64,13 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
 class ProgressDelegate(QStyledItemDelegate):
     """自定义进度条委托，通过 QPainter 直接在单元格内绘制进度条"""
 
+    def initStyleOption(
+        self, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex
+    ) -> None:
+        super().initStyleOption(option, index)
+        if index.column() == 2:
+            option.text = ""
+
     def paint(
         self,
         painter: QPainter,
@@ -70,6 +78,9 @@ class ProgressDelegate(QStyledItemDelegate):
         index: QModelIndex | QPersistentModelIndex,
     ) -> None:
         if index.column() == 2:
+            # 绘制单元格的标准背景、选中状态、交替背景和边框
+            super().paint(painter, option, index)
+
             progress = index.data(Qt.ItemDataRole.DisplayRole)
             if progress is None:
                 progress = 0
@@ -448,15 +459,15 @@ class MainWindow(QMainWindow):
 
             speed_str = data.get("speed_str") or data.get("_speed_str")
             if speed_str:
-                speed_str = self._clean_ansi(speed_str)
+                speed_str = clean_ansi(speed_str)
             else:
-                speed_str = self._format_speed(data.get("speed"))
+                speed_str = format_speed(data.get("speed"))
 
             eta_str = data.get("eta_str") or data.get("_eta_str")
             if eta_str:
-                eta_str = self._clean_ansi(eta_str)
+                eta_str = clean_ansi(eta_str)
             else:
-                eta_str = self._format_eta(data.get("eta"))
+                eta_str = format_eta(data.get("eta"))
 
             self._update_table_row(
                 task_id, {"progress": progress, "speed": speed_str, "eta": eta_str}
@@ -476,47 +487,6 @@ class MainWindow(QMainWindow):
     def _update_table_row(self, task_id: int, data: dict[str, Any]) -> None:
         """更新模型中的任务数据，由视图自动重绘"""
         self.table_model.update_task_data(task_id, data)
-
-    def _clean_ansi(self, text):
-        """清除 ANSI 转义代码 (如 [0;32m)"""
-        if not isinstance(text, str):
-            return text
-        import re
-
-        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
-        return ansi_escape.sub("", text).strip()
-
-    def _format_speed(self, speed):
-        """格式化下载速度"""
-        if speed is None:
-            return "--"
-        if isinstance(speed, str):
-            return self._clean_ansi(speed)
-
-        # 处理数值类型
-        for unit in ["B/s", "KB/s", "MB/s", "GB/s"]:
-            if speed < 1024.0:
-                return f"{speed:.1f} {unit}"
-            speed /= 1024.0
-        return f"{speed:.1f} TB/s"
-
-    def _format_eta(self, seconds):
-        """格式化剩余时间"""
-        if seconds is None:
-            return "--"
-        if isinstance(seconds, str):
-            return self._clean_ansi(seconds)
-
-        # 处理数值类型 (秒)
-        try:
-            seconds = int(seconds)
-            m, s = divmod(seconds, 60)
-            h, m = divmod(m, 60)
-            if h > 0:
-                return f"{h:02d}:{m:02d}:{s:02d}"
-            return f"{m:02d}:{s:02d}"
-        except (ValueError, TypeError):
-            return "--"
 
     @Slot(int, str)
     def _on_log(self, task_id, msg):

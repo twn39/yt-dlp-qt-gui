@@ -24,6 +24,8 @@ class DownloadTask:
     playlist_items: Optional[str] = None
     playlist_random: bool = False
     max_downloads: Optional[int] = None
+    impersonate: Optional[str] = None
+    no_cookies: bool = False
     created_at: Optional[str] = None
 
     @classmethod
@@ -58,6 +60,8 @@ class DownloadTask:
             playlist_items=data.get("playlist_items") or None,  # Treat empty string as None
             playlist_random=bool(data.get("playlist_random", False)),
             max_downloads=max_downloads,
+            impersonate=data.get("impersonate") or None,
+            no_cookies=bool(data.get("no_cookies", False)),
             created_at=data.get("created_at"),
         )
 

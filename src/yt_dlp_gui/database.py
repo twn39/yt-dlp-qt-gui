@@ -114,9 +114,18 @@ class Database:
                     playlist_items TEXT,
                     playlist_random BOOLEAN,
                     max_downloads INTEGER,
+                    impersonate TEXT,
+                    no_cookies BOOLEAN DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            # Check and add new columns if they do not exist
+            cursor = conn.execute("PRAGMA table_info(tasks)")
+            columns = {row["name"] for row in cursor.fetchall()}
+            if "impersonate" not in columns:
+                conn.execute("ALTER TABLE tasks ADD COLUMN impersonate TEXT")
+            if "no_cookies" not in columns:
+                conn.execute("ALTER TABLE tasks ADD COLUMN no_cookies BOOLEAN DEFAULT 0")
             conn.commit()
 
         self._execute_sync(init_func)
@@ -127,8 +136,9 @@ class Database:
                 INSERT INTO tasks (
                     url, title, status, save_path, format_preset, proxy,
                     concurrent_fragments, write_subs, download_playlist,
-                    playlist_items, playlist_random, max_downloads
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    playlist_items, playlist_random, max_downloads,
+                    impersonate, no_cookies
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             params = (
                 task.url,
@@ -143,6 +153,8 @@ class Database:
                 task.playlist_items,
                 task.playlist_random,
                 task.max_downloads,
+                task.impersonate,
+                task.no_cookies,
             )
             cursor = conn.execute(query, params)
             conn.commit()

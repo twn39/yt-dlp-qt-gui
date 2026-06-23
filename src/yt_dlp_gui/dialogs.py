@@ -98,8 +98,16 @@ class AddTaskDialog(QDialog):
         options_layout.addWidget(QLabel("并发片段数:"), 1, 0)
         options_layout.addWidget(self.concurrent_input, 1, 1)
 
+        self.impersonate_combo = QComboBox()
+        self.impersonate_combo.addItems(["无", "chrome", "firefox", "edge", "safari"])
+        options_layout.addWidget(QLabel("浏览器伪装:"), 1, 2)
+        options_layout.addWidget(self.impersonate_combo, 1, 3)
+
         self.write_subs_checkbox = Switch("下载字幕")
-        options_layout.addWidget(self.write_subs_checkbox, 1, 3)
+        options_layout.addWidget(self.write_subs_checkbox, 2, 0, 1, 2)
+
+        self.no_cookies_checkbox = Switch("禁用 Cookies")
+        options_layout.addWidget(self.no_cookies_checkbox, 2, 2, 1, 2)
 
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
@@ -156,6 +164,10 @@ class AddTaskDialog(QDialog):
             self.dir_input.setText(directory)
 
     def get_task_data(self) -> DownloadTask:
+        impersonate_val = self.impersonate_combo.currentText()
+        if impersonate_val == "无":
+            impersonate_val = None
+
         return DownloadTask(
             url=self.url_input.text().strip(),
             save_path=self.dir_input.text(),
@@ -170,6 +182,8 @@ class AddTaskDialog(QDialog):
             max_downloads=int(self.max_downloads_input.text())
             if self.max_downloads_input.text().isdigit()
             else None,
+            impersonate=impersonate_val,
+            no_cookies=self.no_cookies_checkbox.isChecked(),
         )
 
 
