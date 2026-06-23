@@ -7,6 +7,7 @@
 import os
 import queue
 import sqlite3
+import sys
 import threading
 from typing import Any, Callable, Optional
 
@@ -16,10 +17,11 @@ from .models import DownloadTask
 class DbTask:
     """封装数据库任务以及用于返回结果的线程安全队列"""
 
-    def __init__(self, func: Callable[[sqlite3.Connection], Any]) -> None:
+    def __init__(self, func: Callable[[sqlite3.Connection], Any], sync: bool = True) -> None:
         self.func = func
-        # 结果队列，保存元素形式为 (success_bool, result_or_exception)
-        self.result_queue = queue.Queue[tuple[bool, Any]](maxsize=1)
+        self.sync = sync
+        # 结果队列，对于同步任务是必要的，异步任务无需创建以减少开销
+        self.result_queue = queue.Queue[tuple[bool, Any]](maxsize=1) if sync else None
 
 
 class Database:
@@ -59,9 +61,14 @@ class Database:
             try:
                 # 执行具体 closure 并返回结果
                 result = task.func(conn)
-                task.result_queue.put((True, result))
+                if task.sync and task.result_queue is not None:
+                    task.result_queue.put((True, result))
             except Exception as e:
-                task.result_queue.put((False, e))
+                if task.sync and task.result_queue is not None:
+                    task.result_queue.put((False, e))
+                else:
+                    # 异步任务出错时，记录日志到 stderr 以免程序崩溃
+                    print(f"Database background write error: {e}", file=sys.stderr)
             finally:
                 self._queue.task_done()
 
@@ -69,12 +76,18 @@ class Database:
 
     def _execute_sync(self, func: Callable[[sqlite3.Connection], Any]) -> Any:
         """同步执行任务：向队列投递任务并阻塞等待后台线程返回结果"""
-        task = DbTask(func)
+        task = DbTask(func, sync=True)
         self._queue.put(task)
+        assert task.result_queue is not None
         success, result = task.result_queue.get()
         if not success:
             raise result
         return result
+
+    def _execute_async(self, func: Callable[[sqlite3.Connection], Any]) -> None:
+        """异步执行任务：向队列投递任务，直接返回不阻塞调用方（火及忘记模式）"""
+        task = DbTask(func, sync=False)
+        self._queue.put(task)
 
     def close(self) -> None:
         """显式关闭数据库连接"""
@@ -149,14 +162,14 @@ class Database:
             conn.execute(query, params)
             conn.commit()
 
-        self._execute_sync(update_func)
+        self._execute_async(update_func)
 
     def delete_task(self, task_id: int) -> None:
         def delete_func(conn: sqlite3.Connection) -> None:
             conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
             conn.commit()
 
-        self._execute_sync(delete_func)
+        self._execute_async(delete_func)
 
     # 允许排序的列白名单，防止 SQL 注入
     _SORT_COLS = frozenset({"created_at", "title", "status", "progress"})

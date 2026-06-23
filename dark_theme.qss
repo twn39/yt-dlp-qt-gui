@@ -96,7 +96,7 @@ QMenu::icon {
 }
 
 /* TableView / TableWidget */
-QTableWidget {
+QTableView {
     background-color: transparent;
     alternate-background-color: #1B1B1B;
     gridline-color: transparent;
@@ -106,7 +106,7 @@ QTableWidget {
     selection-color: #4A90E2;
 }
 
-QTableWidget::item {
+QTableView::item {
     padding: 4px 12px;
     color: #C0C0C0;
     border-bottom: 1px solid #121212;
@@ -135,7 +135,7 @@ QHeaderView::section:hover {
 }
 
 /* 进度条 */
-QTableWidget QProgressBar {
+QTableView QProgressBar {
     border: 1px solid #080808;
     border-radius: 3px;
     text-align: center;
@@ -147,7 +147,7 @@ QTableWidget QProgressBar {
     color: #FFFFFF;
 }
 
-QTableWidget QProgressBar::chunk {
+QTableView QProgressBar::chunk {
     background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #3D3D3D, stop:1 #4A90E2);
     border-radius: 2px;
 }

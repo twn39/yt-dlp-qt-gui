@@ -4,14 +4,10 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 from typing import Any, Dict
 
-try:
-    __version__ = _pkg_version("yt-dlp-qt-gui")
-except PackageNotFoundError:
-    __version__ = "0.0.0-dev"
 import click
 import qtawesome as qta
-from PySide6.QtCore import QSize, Qt, QUrl, Slot
-from PySide6.QtGui import QAction, QDesktopServices
+from PySide6.QtCore import QModelIndex, QPersistentModelIndex, QRect, QSize, Qt, QUrl, Slot
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QLinearGradient, QPainter
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -21,10 +17,10 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
-    QProgressBar,
     QSizePolicy,
-    QTableWidget,
-    QTableWidgetItem,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QTableView,
     QToolBar,
     QToolButton,
     QVBoxLayout,
@@ -34,8 +30,13 @@ from PySide6.QtWidgets import (
 from .config import STYLESHEET_FILE, get_task_log_path
 from .database import Database
 from .dialogs import AboutDialog, AddTaskDialog, LogDialog
-from .models import DownloadTask
+from .models import DownloadTask, TaskTableModel
 from .scheduler import DownloadScheduler
+
+try:
+    __version__ = _pkg_version("yt-dlp-qt-gui")
+except PackageNotFoundError:
+    __version__ = "0.0.0-dev"
 
 
 def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
@@ -59,12 +60,72 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
     return None
 
 
+class ProgressDelegate(QStyledItemDelegate):
+    """自定义进度条委托，通过 QPainter 直接在单元格内绘制进度条"""
+
+    def paint(
+        self,
+        painter: QPainter,
+        option: QStyleOptionViewItem,
+        index: QModelIndex | QPersistentModelIndex,
+    ) -> None:
+        if index.column() == 2:
+            progress = index.data(Qt.ItemDataRole.DisplayRole)
+            if progress is None:
+                progress = 0
+
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+            # 进度条布局尺寸
+            rect = option.rect
+            margin_h = 15
+            bar_h = 8
+
+            bar_w = rect.width() - 2 * margin_h
+            if bar_w < 0:
+                bar_w = 0
+            bar_y = rect.y() + (rect.height() - bar_h) // 2
+            bar_x = rect.x() + margin_h
+
+            bg_rect = QRect(bar_x, bar_y, bar_w, bar_h)
+
+            # 绘制背景：带 1px 边框 #080808，底色 #0D0D0D
+            painter.setPen(QColor("#080808"))
+            painter.setBrush(QColor("#0D0D0D"))
+            painter.drawRoundedRect(bg_rect, 3, 3)
+
+            # 绘制进度滑块（渐变色：从 #3D3D3D 到 #4A90E2）
+            if progress > 0:
+                chunk_w = int(bar_w * (progress / 100.0))
+                if chunk_w < 4 and progress > 0:
+                    chunk_w = 4
+                if chunk_w > bar_w:
+                    chunk_w = bar_w
+
+                chunk_rect = QRect(bar_x, bar_y, chunk_w, bar_h)
+                gradient = QLinearGradient(bar_x, bar_y, bar_x + chunk_w, bar_y)
+                gradient.setColorAt(0.0, QColor("#3D3D3D"))
+                gradient.setColorAt(1.0, QColor("#4A90E2"))
+
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(gradient)
+                painter.drawRoundedRect(chunk_rect, 2, 2)
+
+            painter.restore()
+        else:
+            super().paint(painter, option, index)
+
+
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, db: Database, scheduler: DownloadScheduler):
         super().__init__()
-        self.db = Database()
-        self.scheduler = DownloadScheduler(self.db)
+        self.db = db
+        self.scheduler = scheduler
         self.active_log_dialogs: Dict[int, Any] = {}  # 跟踪打开的日志窗口
+
+        # 数据模型初始化
+        self.table_model = TaskTableModel()
 
         # 连接调度器信号
         self.scheduler.task_added.connect(self._add_task_to_table)
@@ -73,8 +134,7 @@ class MainWindow(QMainWindow):
         self.scheduler.task_title_updated.connect(self._on_scheduler_title_updated)
         self.scheduler.task_log_emitted.connect(self._on_log)
         self.scheduler.task_deleted.connect(self._on_scheduler_deleted)
-        # task_id → row 反向映射，使 _update_table_row 从 O(n) 降为 O(1)
-        self._task_row_map: dict[int, int] = {}
+
         # 排序选项：显示文本 → (sort_col, sort_dir)
         self._sort_options: dict[str, tuple[str, str]] = {
             "创建时间 ↓": ("created_at", "DESC"),
@@ -106,9 +166,9 @@ class MainWindow(QMainWindow):
         panel_layout.setContentsMargins(0, 0, 0, 0)  # 去掉内边距，使表格填充满面板
 
         # 下载列表表格
-        self.table = QTableWidget()
-        self.table.setColumnCount(5)  # 名称, 状态, 进度, 速度, 剩余时间
-        self.table.setHorizontalHeaderLabels(["名称", "状态", "进度", "速度", "剩余时间"])
+        self.table = QTableView()
+        self.table.setModel(self.table_model)
+        self.table.setItemDelegateForColumn(2, ProgressDelegate(self))
 
         self.table.verticalHeader().setVisible(False)
         header = self.table.horizontalHeader()
@@ -131,7 +191,7 @@ class MainWindow(QMainWindow):
         self.table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.table.verticalHeader().setDefaultSectionSize(36)
 
-        # 禁用表头点击排序：改用工具栏下拉框触发 DB 层排序，避免 row 索引失效
+        # 禁用表头点击排序：改用工具栏下拉框触发 DB 层排序
         self.table.setSortingEnabled(False)
 
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -145,7 +205,7 @@ class MainWindow(QMainWindow):
         self.statusBar().addWidget(self.status_info)
         self.task_count_info = QLabel("0 个项目, 已选择 0 个  ")
         self.statusBar().addPermanentWidget(self.task_count_info)
-        self.table.itemSelectionChanged.connect(self._update_status_counts)
+        self.table.selectionModel().selectionChanged.connect(self._update_status_counts)
 
     def _setup_toolbar(self):
         toolbar = QToolBar("Main Toolbar")
@@ -180,16 +240,14 @@ class MainWindow(QMainWindow):
         # 排序控件：弹性间隔 + QToolButton+QMenu，风格与左侧工具栏按鈕完全一致
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        spacer.setStyleSheet(
-            "background: transparent;"
-        )  # 避免继承 QWidget 的 #1E1E1E 而与工具栏背景不符
+        spacer.setStyleSheet("background: transparent;")
         toolbar.addWidget(spacer)
 
         self.sort_button = QToolButton(self)
         self.sort_button.setIcon(qta.icon("fa5s.sort-amount-down", color="#BBBBBB"))
         self.sort_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.sort_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self.sort_button.setText(next(iter(self._sort_options)))  # 默认„创建时间 ↓“
+        self.sort_button.setText(next(iter(self._sort_options)))  # 默认“创建时间 ↓”
         self.sort_button.setToolTip("排序方式")
 
         _sort_menu = QMenu(self)
@@ -201,22 +259,9 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.sort_button)
 
     def _update_status_counts(self):
-        total = self.table.rowCount()
-        selected = len(set(index.row() for index in self.table.selectedIndexes()))
+        total = self.table_model.rowCount()
+        selected = len(self.table.selectionModel().selectedRows())
         self.task_count_info.setText(f"{total} 个项目, 已选择 {selected} 个  ")
-
-    def _get_status_icon(self, status):
-        if status == "downloading":
-            return qta.icon("fa5s.download", color="#FFFFFF")
-        elif status == "finished":
-            return qta.icon("fa5s.check-circle", color="#4CAF50")  # 绿色图标
-        elif status == "error":
-            return qta.icon("fa5s.exclamation-circle", color="#FFFFFF")
-        elif status == "merging":
-            return qta.icon("fa5s.layer-group", color="#FFFFFF")
-        elif status == "cancelled":
-            return qta.icon("fa5s.stop-circle", color="#FFFFFF")
-        return qta.icon("fa5s.clock", color="#FFFFFF")
 
     def _apply_dark_theme(self):
         qss = load_stylesheet()
@@ -233,50 +278,20 @@ class MainWindow(QMainWindow):
         self._load_tasks_from_db()
 
     def _load_tasks_from_db(self) -> None:
-        """从 DB 加载所有任务并重建表格和 row 映射"""
+        """从 DB 加载所有任务并刷新 Model"""
         current = (
             self.sort_button.text()
             if hasattr(self, "sort_button")
             else next(iter(self._sort_options))
         )
         sort_col, sort_dir = self._sort_options.get(current, ("created_at", "DESC"))
-        self.table.setRowCount(0)
-        self._task_row_map.clear()
         tasks = self.db.get_all_tasks(sort_col=sort_col, sort_dir=sort_dir)
-        for task in tasks:
-            self._add_task_to_table(task)
+        self.table_model.set_tasks(tasks)
         self._update_status_counts()
 
     def _add_task_to_table(self, task: DownloadTask) -> None:
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-        # 写入 task_id → row 映射
-        task_id = task.id
-        assert task_id is not None
-        self._task_row_map[task_id] = row
-
-        # 将 ID 存在 UserRole 中
-        title = task.title or task.url
-        icon_color = "#4CAF50" if task.status == "finished" else "#FFFFFF"
-        icon_name = "fa5s.file-video" if task.status == "finished" else "fa5s.video"
-        title_item = QTableWidgetItem(qta.icon(icon_name, color=icon_color), title)
-        title_item.setData(Qt.ItemDataRole.UserRole, task_id)
-        self.table.setItem(row, 0, title_item)
-
-        status_item = QTableWidgetItem(self._get_status_icon(task.status), task.status)
-        self.table.setItem(row, 1, status_item)
-
-        pbar_container = QWidget()
-        pbar_container.setStyleSheet("background: transparent;")
-        pbar_layout = QVBoxLayout(pbar_container)
-        pbar_layout.setContentsMargins(15, 6, 15, 6)
-        pbar = QProgressBar()
-        pbar.setValue(task.progress or 0)
-        pbar_layout.addWidget(pbar)
-        self.table.setCellWidget(row, 2, pbar_container)
-
-        self.table.setItem(row, 3, QTableWidgetItem(task.speed or "--"))
-        self.table.setItem(row, 4, QTableWidgetItem(task.eta or "--"))
+        self.table_model.add_task(task)
+        self._update_status_counts()
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
@@ -302,9 +317,10 @@ class MainWindow(QMainWindow):
             self._delete_selected_task()
 
     def _open_task_folder(self):
-        row = self.table.currentRow()
-        if row < 0:
+        index = self.table.currentIndex()
+        if not index.isValid():
             return
+        row = index.row()
         task_id = self._get_task_id_from_row(row)
         if not task_id:
             return
@@ -318,15 +334,18 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "错误", f"目录不存在: {path}")
 
     def _view_selected_task_log(self):
-        row = self.table.currentRow()
-        if row < 0:
+        index = self.table.currentIndex()
+        if not index.isValid():
             return
+        row = index.row()
         task_id = self._get_task_id_from_row(row)
         if not task_id:
             return
 
-        item0 = self.table.item(row, 0)
-        title = item0.text() if item0 else "未知任务"
+        title = (
+            self.table_model.data(self.table_model.index(row, 0), Qt.ItemDataRole.DisplayRole)
+            or "未知任务"
+        )
 
         # 如果窗口已打开，则置顶
         if task_id in self.active_log_dialogs:
@@ -358,20 +377,20 @@ class MainWindow(QMainWindow):
             self.scheduler.add_task(task)
 
     def _get_task_id_from_row(self, row):
-        item = self.table.item(row, 0)
-        return item.data(Qt.ItemDataRole.UserRole) if item else None
+        index = self.table_model.index(row, 0)
+        return index.data(Qt.ItemDataRole.UserRole) if index.isValid() else None
 
     def _start_selected_task(self):
-        rows = set(index.row() for index in self.table.selectedIndexes())
-        for row in rows:
-            tid = self._get_task_id_from_row(row)
+        indices = self.table.selectionModel().selectedRows()
+        for idx in indices:
+            tid = self._get_task_id_from_row(idx.row())
             if tid:
                 self.scheduler.start_task(tid)
 
     def _stop_selected_task(self):
-        rows = set(index.row() for index in self.table.selectedIndexes())
-        for row in rows:
-            tid = self._get_task_id_from_row(row)
+        indices = self.table.selectionModel().selectedRows()
+        for idx in indices:
+            tid = self._get_task_id_from_row(idx.row())
             if tid:
                 self.scheduler.stop_task(tid)
 
@@ -451,43 +470,12 @@ class MainWindow(QMainWindow):
         self._update_table_row(task_id, {"title": title})
 
     def _on_scheduler_deleted(self, task_id: int) -> None:
-        self._remove_table_row_by_task_id(task_id)
+        self.table_model.remove_task(task_id)
         self._update_status_counts()
 
     def _update_table_row(self, task_id: int, data: dict[str, Any]) -> None:
-        """O(1) 行更新：通过 _task_row_map 直接定位，无需全表扫描"""
-        row = self._task_row_map.get(task_id)
-        if row is None:
-            return
-        if "status" in data:
-            st = data["status"]
-            item1 = self.table.item(row, 1)
-            if item1:
-                item1.setIcon(self._get_status_icon(st))
-                item1.setText(st)
-            # 如果完成，第一列的图标也变绿
-            if st == "finished":
-                item0 = self.table.item(row, 0)
-                if item0:
-                    item0.setIcon(qta.icon("fa5s.file-video", color="#4CAF50"))
-        if "progress" in data:
-            pcont = self.table.cellWidget(row, 2)
-            if pcont:
-                pbar = pcont.findChild(QProgressBar)
-                if pbar:
-                    pbar.setValue(data["progress"])
-        if "speed" in data:
-            item3 = self.table.item(row, 3)
-            if item3:
-                item3.setText(data["speed"])
-        if "eta" in data:
-            item4 = self.table.item(row, 4)
-            if item4:
-                item4.setText(data["eta"])
-        if "title" in data:
-            item0 = self.table.item(row, 0)
-            if item0:
-                item0.setText(data["title"])
+        """更新模型中的任务数据，由视图自动重绘"""
+        self.table_model.update_task_data(task_id, data)
 
     def _clean_ansi(self, text):
         """清除 ANSI 转义代码 (如 [0;32m)"""
@@ -536,20 +524,6 @@ class MainWindow(QMainWindow):
         if task_id in self.active_log_dialogs:
             self.active_log_dialogs[task_id].append_log(msg)
 
-    def _remove_row_from_map(self, deleted_row: int, task_id: int) -> None:
-        """从 _task_row_map 删除指定条目，并将该行以下所有条目的 row 值 -1"""
-        self._task_row_map.pop(task_id, None)
-        for tid in self._task_row_map:
-            if self._task_row_map[tid] > deleted_row:
-                self._task_row_map[tid] -= 1
-
-    def _remove_table_row_by_task_id(self, task_id: int) -> None:
-        """O(1) 按 task_id 查找并删除表格行"""
-        row = self._task_row_map.get(task_id)
-        if row is not None:
-            self.table.removeRow(row)
-            self._remove_row_from_map(row, task_id)
-
     def closeEvent(self, event) -> None:  # type: ignore[override]
         """窗口关闭时优雅停止所有任务并释放资源"""
         self.scheduler.shutdown()
@@ -560,7 +534,9 @@ class MainWindow(QMainWindow):
 
 def run_gui():
     app = QApplication(sys.argv)
-    window = MainWindow()
+    db = Database()
+    scheduler = DownloadScheduler(db)
+    window = MainWindow(db, scheduler)
     window.show()
     sys.exit(app.exec())
 
