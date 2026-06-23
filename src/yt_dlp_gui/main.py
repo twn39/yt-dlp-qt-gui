@@ -445,7 +445,14 @@ class MainWindow(QMainWindow):
             self.scheduler.delete_task(tid)
 
     def _on_scheduler_status_changed(self, task_id: int, status: str) -> None:
-        self._update_table_row(task_id, {"status": status})
+        updates = {"status": status}
+        if status == "finished":
+            updates.update({"progress": 100, "speed": "--", "eta": "--"})
+        elif status in ("cancelled", "error"):
+            updates.update({"progress": 0, "speed": "--", "eta": "--"})
+        elif status in ("downloading", "queued"):
+            updates.update({"speed": "--", "eta": "--"})
+        self._update_table_row(task_id, updates)
 
     @Slot(int, dict)
     def _on_scheduler_progress(self, task_id: int, data: dict[str, Any]) -> None:

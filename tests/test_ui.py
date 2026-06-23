@@ -59,3 +59,54 @@ def test_add_task_creates_table_row(app_window, qtbot):
 
     idx_eta = model.index(0, 4)
     assert model.data(idx_eta, Qt.ItemDataRole.DisplayRole) == "01:00"
+
+
+def test_on_scheduler_status_changed_updates_fields(app_window):
+    """Verify that _on_scheduler_status_changed updates status, progress, speed, and eta."""
+    # Reset model tasks
+    app_window.table_model.set_tasks([])
+
+    # Mock DownloadTask object initially in merging state
+    task = DownloadTask(
+        id=999,
+        url="https://example.com/video",
+        title="Test Video",
+        status="merging",
+        progress=100,
+        speed="Merging...",
+        eta="--",
+        save_path="/tmp",
+        format_preset="mp4",
+        proxy="",
+        concurrent_fragments=1,
+        write_subs=False,
+        download_playlist=False,
+        playlist_items="",
+        created_at="2023-01-01",
+    )
+
+    app_window._add_task_to_table(task)
+    model = app_window.table.model()
+
+    # Trigger finished status change
+    app_window._on_scheduler_status_changed(999, "finished")
+
+    # Verify status is updated to finished
+    assert model.data(model.index(0, 1), Qt.ItemDataRole.DisplayRole) == "finished"
+    # Verify speed is reset to "--"
+    assert model.data(model.index(0, 3), Qt.ItemDataRole.DisplayRole) == "--"
+    # Verify eta is "--"
+    assert model.data(model.index(0, 4), Qt.ItemDataRole.DisplayRole) == "--"
+    # Verify progress is 100
+    assert model.data(model.index(0, 2), Qt.ItemDataRole.DisplayRole) == 100
+
+    # Test error status change
+    # Set speed/progress back to something else first
+    app_window.table_model.update_task_data(
+        999, {"speed": "1.2 MB/s", "progress": 50, "eta": "00:10"}
+    )
+    app_window._on_scheduler_status_changed(999, "error")
+    assert model.data(model.index(0, 1), Qt.ItemDataRole.DisplayRole) == "error"
+    assert model.data(model.index(0, 2), Qt.ItemDataRole.DisplayRole) == 0
+    assert model.data(model.index(0, 3), Qt.ItemDataRole.DisplayRole) == "--"
+    assert model.data(model.index(0, 4), Qt.ItemDataRole.DisplayRole) == "--"
