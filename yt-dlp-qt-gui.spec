@@ -35,6 +35,7 @@ a = Analysis(
         'yt_dlp.extractor',
         'yt_dlp.utils',
         'click',
+        'curl_cffi',
     ],
     hookspath=[],
     hooksconfig={},
