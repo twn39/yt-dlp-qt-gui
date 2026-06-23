@@ -1,6 +1,8 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QProgressBar, QTableWidget
 
+from yt_dlp_gui.models import DownloadTask
+
 
 def test_mainwindow_has_table_widget(app_window):
     """Verify MainWindow uses QTableWidget"""
@@ -12,27 +14,27 @@ def test_add_task_creates_table_row(app_window, qtbot):
     """Verify adding a task creates a row in the table"""
     app_window.table.setRowCount(0)
 
-    # Mock task data
-    task_data = {
-        "id": 999,
-        "url": "https://example.com/video",
-        "title": "Test Video",
-        "status": "downloading",
-        "progress": 50,
-        "speed": "1.5 MB/s",
-        "eta": "01:00",
-        "save_path": "/tmp",
-        "format_preset": "mp4",
-        "proxy": "",
-        "concurrent_fragments": 1,
-        "write_subs": False,
-        "download_playlist": False,
-        "playlist_items": "",
-        "created_at": "2023-01-01",
-    }
+    # Mock DownloadTask object
+    task = DownloadTask(
+        id=999,
+        url="https://example.com/video",
+        title="Test Video",
+        status="downloading",
+        progress=50,
+        speed="1.5 MB/s",
+        eta="01:00",
+        save_path="/tmp",
+        format_preset="mp4",
+        proxy="",
+        concurrent_fragments=1,
+        write_subs=False,
+        download_playlist=False,
+        playlist_items="",
+        created_at="2023-01-01",
+    )
 
     # Use internal method to add task to UI
-    app_window._add_task_to_table(task_data)
+    app_window._add_task_to_table(task)
 
     assert app_window.table.rowCount() == 1
 

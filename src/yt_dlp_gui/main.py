@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 from .config import STYLESHEET_FILE, get_task_log_path
 from .database import Database
 from .dialogs import AboutDialog, AddTaskDialog, LogDialog
+from .models import DownloadTask
 from .scheduler import DownloadScheduler
 
 
@@ -246,21 +247,23 @@ class MainWindow(QMainWindow):
             self._add_task_to_table(task)
         self._update_status_counts()
 
-    def _add_task_to_table(self, task: dict[str, Any]) -> None:
+    def _add_task_to_table(self, task: DownloadTask) -> None:
         row = self.table.rowCount()
         self.table.insertRow(row)
         # 写入 task_id → row 映射
-        self._task_row_map[task["id"]] = row
+        task_id = task.id
+        assert task_id is not None
+        self._task_row_map[task_id] = row
 
         # 将 ID 存在 UserRole 中
-        title = task["title"] or task["url"]
-        icon_color = "#4CAF50" if task["status"] == "finished" else "#FFFFFF"
-        icon_name = "fa5s.file-video" if task["status"] == "finished" else "fa5s.video"
+        title = task.title or task.url
+        icon_color = "#4CAF50" if task.status == "finished" else "#FFFFFF"
+        icon_name = "fa5s.file-video" if task.status == "finished" else "fa5s.video"
         title_item = QTableWidgetItem(qta.icon(icon_name, color=icon_color), title)
-        title_item.setData(Qt.ItemDataRole.UserRole, task["id"])
+        title_item.setData(Qt.ItemDataRole.UserRole, task_id)
         self.table.setItem(row, 0, title_item)
 
-        status_item = QTableWidgetItem(self._get_status_icon(task["status"]), task["status"])
+        status_item = QTableWidgetItem(self._get_status_icon(task.status), task.status)
         self.table.setItem(row, 1, status_item)
 
         pbar_container = QWidget()
@@ -268,12 +271,12 @@ class MainWindow(QMainWindow):
         pbar_layout = QVBoxLayout(pbar_container)
         pbar_layout.setContentsMargins(15, 6, 15, 6)
         pbar = QProgressBar()
-        pbar.setValue(task["progress"] or 0)
+        pbar.setValue(task.progress or 0)
         pbar_layout.addWidget(pbar)
         self.table.setCellWidget(row, 2, pbar_container)
 
-        self.table.setItem(row, 3, QTableWidgetItem(task["speed"] or "--"))
-        self.table.setItem(row, 4, QTableWidgetItem(task["eta"] or "--"))
+        self.table.setItem(row, 3, QTableWidgetItem(task.speed or "--"))
+        self.table.setItem(row, 4, QTableWidgetItem(task.eta or "--"))
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
@@ -307,8 +310,8 @@ class MainWindow(QMainWindow):
             return
 
         task = self.db.get_task(task_id)
-        if task and task["save_path"]:
-            path = task["save_path"]
+        if task and task.save_path:
+            path = task.save_path
             if os.path.exists(path):
                 QDesktopServices.openUrl(QUrl.fromLocalFile(path))
             else:
@@ -349,10 +352,10 @@ class MainWindow(QMainWindow):
     def _show_add_dialog(self) -> None:
         dialog = AddTaskDialog(self)
         if dialog.exec():
-            task_data = dialog.get_task_data()
-            if not task_data["url"]:
+            task = dialog.get_task_data()
+            if not task.url:
                 return
-            self.scheduler.add_task(task_data)
+            self.scheduler.add_task(task)
 
     def _get_task_id_from_row(self, row):
         item = self.table.item(row, 0)

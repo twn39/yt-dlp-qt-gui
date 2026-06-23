@@ -10,6 +10,8 @@ import sqlite3
 import threading
 from typing import Any, Callable, Optional
 
+from .models import DownloadTask
+
 
 class DbTask:
     """封装数据库任务以及用于返回结果的线程安全队列"""
@@ -106,7 +108,7 @@ class Database:
 
         self._execute_sync(init_func)
 
-    def add_task(self, task_data: dict[str, Any]) -> int:
+    def add_task(self, task: DownloadTask) -> int:
         def add_func(conn: sqlite3.Connection) -> int:
             query = """
                 INSERT INTO tasks (
@@ -116,18 +118,18 @@ class Database:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             params = (
-                task_data["url"],
-                task_data.get("title", "正在解析..."),
+                task.url,
+                task.title or "正在解析...",
                 "pending",
-                task_data["save_path"],
-                task_data["format_preset"],
-                task_data.get("proxy"),
-                task_data.get("concurrent_fragments"),
-                task_data.get("write_subs", False),
-                task_data.get("download_playlist", False),
-                task_data.get("playlist_items"),
-                task_data.get("playlist_random", False),
-                task_data.get("max_downloads"),
+                task.save_path,
+                task.format_preset,
+                task.proxy,
+                task.concurrent_fragments,
+                task.write_subs,
+                task.download_playlist,
+                task.playlist_items,
+                task.playlist_random,
+                task.max_downloads,
             )
             cursor = conn.execute(query, params)
             conn.commit()
@@ -164,7 +166,7 @@ class Database:
         self,
         sort_col: str = "created_at",
         sort_dir: str = "DESC",
-    ) -> list[dict[str, Any]]:
+    ) -> list[DownloadTask]:
         """返回所有任务，支持 DB 层排序（代替 QTableWidget 的列排序）。
 
         Args:
@@ -174,16 +176,16 @@ class Database:
         col = sort_col if sort_col in self._SORT_COLS else "created_at"
         direction = sort_dir if sort_dir in self._SORT_DIRS else "DESC"
 
-        def get_all_func(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+        def get_all_func(conn: sqlite3.Connection) -> list[DownloadTask]:
             cursor = conn.execute(f"SELECT * FROM tasks ORDER BY {col} {direction}")  # noqa: S608
-            return [dict(row) for row in cursor.fetchall()]
+            return [DownloadTask.from_dict(dict(row)) for row in cursor.fetchall()]
 
         return self._execute_sync(get_all_func)
 
-    def get_task(self, task_id: int) -> Optional[dict[str, Any]]:
-        def get_func(conn: sqlite3.Connection) -> Optional[dict[str, Any]]:
+    def get_task(self, task_id: int) -> Optional[DownloadTask]:
+        def get_func(conn: sqlite3.Connection) -> Optional[DownloadTask]:
             cursor = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
             row = cursor.fetchone()
-            return dict(row) if row else None
+            return DownloadTask.from_dict(dict(row)) if row else None
 
         return self._execute_sync(get_func)

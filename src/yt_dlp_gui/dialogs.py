@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from .components import Switch
 from .config import FORMAT_PRESETS
+from .models import DownloadTask
 
 
 class LogDialog(QDialog):
@@ -154,22 +155,22 @@ class AddTaskDialog(QDialog):
             self.selected_download_path = directory
             self.dir_input.setText(directory)
 
-    def get_task_data(self):
-        return {
-            "url": self.url_input.text().strip(),
-            "save_path": self.dir_input.text(),
-            "format_preset": FORMAT_PRESETS[self.format_combo.currentText()],
-            "proxy": self.proxy_input.text().strip() or None,
-            "concurrent_fragments": int(self.concurrent_input.text())
+    def get_task_data(self) -> DownloadTask:
+        return DownloadTask(
+            url=self.url_input.text().strip(),
+            save_path=self.dir_input.text(),
+            format_preset=FORMAT_PRESETS[self.format_combo.currentText()],
+            proxy=self.proxy_input.text().strip() or None,
+            concurrent_fragments=int(self.concurrent_input.text())
             if self.concurrent_input.text().isdigit()
             else None,
-            "write_subs": self.write_subs_checkbox.isChecked(),
-            "download_playlist": self.download_playlist_checkbox.isChecked(),
-            "playlist_items": self.playlist_items_input.text().strip() or None,
-            "max_downloads": int(self.max_downloads_input.text())
+            write_subs=self.write_subs_checkbox.isChecked(),
+            download_playlist=self.download_playlist_checkbox.isChecked(),
+            playlist_items=self.playlist_items_input.text().strip() or None,
+            max_downloads=int(self.max_downloads_input.text())
             if self.max_downloads_input.text().isdigit()
             else None,
-        }
+        )
 
 
 GITHUB_URL = "https://github.com/twn39/yt-dlp-qt-gui"

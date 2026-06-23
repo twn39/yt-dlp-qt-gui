@@ -5,13 +5,14 @@ from PySide6.QtCore import QObject, QThread, Signal, Slot
 
 from .config import remove_task_log
 from .database import Database
+from .models import DownloadTask
 from .worker import DownloadWorker
 
 
 class DownloadScheduler(QObject):
     """下载调度管理器，负责并发控制、等待队列及线程生命周期管理"""
 
-    task_added = Signal(dict)  # 发送完整的任务字典
+    task_added = Signal(DownloadTask)  # 发送完整的任务实体
     task_status_changed = Signal(int, str)  # 发送 (task_id, status)
     task_progress_changed = Signal(int, dict)  # 发送 (task_id, progress_data)
     task_title_updated = Signal(int, str)  # 发送 (task_id, title)
@@ -31,12 +32,12 @@ class DownloadScheduler(QObject):
         self._active_task_ids: Set[int] = set()
         self._pending_delete_tids: Set[int] = set()
 
-    def add_task(self, task_data: Dict[str, Any]) -> int:
+    def add_task(self, task: DownloadTask) -> int:
         """添加新任务到数据库，并调度启动"""
-        task_id = self.db.add_task(task_data)
-        task = self.db.get_task(task_id)
-        if task:
-            self.task_added.emit(task)
+        task_id = self.db.add_task(task)
+        db_task = self.db.get_task(task_id)
+        if db_task:
+            self.task_added.emit(db_task)
             self.start_task(task_id)
         return task_id
 
@@ -59,23 +60,24 @@ class DownloadScheduler(QObject):
             self._waiting_queue.append(task_id)
             self.task_status_changed.emit(task_id, "queued")
 
-    def _run_task_thread(self, task: Dict[str, Any]) -> None:
+    def _run_task_thread(self, task: DownloadTask) -> None:
         """在 QThread 中实际创建并启动下载任务"""
-        task_id = task["id"]
+        task_id = task.id
+        assert task_id is not None
         self.db.update_task(task_id, {"status": "downloading"})
         self.task_status_changed.emit(task_id, "downloading")
 
         thread = QThread()
         worker = DownloadWorker(
             task_id=task_id,
-            url=task["url"],
-            download_path=task["save_path"],
-            format_preset=task["format_preset"],
-            proxy=task["proxy"],
-            concurrent_fragments=task["concurrent_fragments"],
-            write_subs=task["write_subs"],
-            download_playlist=task["download_playlist"],
-            playlist_items=task["playlist_items"],
+            url=task.url,
+            download_path=task.save_path,
+            format_preset=task.format_preset,
+            proxy=task.proxy,
+            concurrent_fragments=task.concurrent_fragments,
+            write_subs=task.write_subs,
+            download_playlist=task.download_playlist,
+            playlist_items=task.playlist_items,
         )
         worker.moveToThread(thread)
 
