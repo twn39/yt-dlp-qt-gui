@@ -12,11 +12,13 @@ except PackageNotFoundError:
     # 仅在未通过 pip/uv 安装时（例如直接 clone 运行）出现
     __version__ = "0.0.0-dev"
 
+
 # cli 延迟导入以避免循环依赖（main.py → __init__.py → main.py）
 # 外部使用者请直接 from yt_dlp_gui.main import cli
 def __getattr__(name: str):  # noqa: N807
     if name == "cli":
         from .main import cli
+
         return cli
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

@@ -36,7 +36,7 @@ def test_worker_cancel():
 def test_worker_logger(qtbot):
     """Test the YtdlpLogger signal emission."""
     worker = DownloadWorker(task_id=1, url="url", download_path="path")
-    logger = worker.YtdlpLogger(worker.task_id, worker.log_message)
+    logger = worker.YtdlpLogger(worker.task_id, worker._write_log)
 
     with qtbot.waitSignal(worker.log_message, timeout=1000) as blocker:
         logger.info("Test Info Message")

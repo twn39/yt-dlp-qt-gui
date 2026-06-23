@@ -4,6 +4,7 @@ Yt-dlp GUI 配置常量
 集中管理应用程序配置，便于维护和修改。
 """
 
+import os
 from typing import Final
 
 # =====================
@@ -75,3 +76,31 @@ DEFAULT_PLAYLIST_RANDOM: Final[bool] = False
 
 # 默认最大下载数（空表示无限制）
 DEFAULT_MAX_DOWNLOADS: Final[str] = ""
+
+
+# =====================
+# 日志配置与管理助手
+# =====================
+
+
+def get_log_dir() -> str:
+    """获取日志存储目录并确保其存在"""
+    config_dir = os.path.expanduser("~/.yt-dlp-gui")
+    log_dir = os.path.join(config_dir, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    return log_dir
+
+
+def get_task_log_path(task_id: int) -> str:
+    """获取特定任务的日志文件路径"""
+    return os.path.join(get_log_dir(), f"task_{task_id}.log")
+
+
+def remove_task_log(task_id: int) -> None:
+    """删除特定任务的日志文件"""
+    try:
+        path = get_task_log_path(task_id)
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass

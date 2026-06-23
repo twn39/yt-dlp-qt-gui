@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPlainTextEdit,
     QPushButton,
-    QTextEdit,
     QVBoxLayout,
 )
 
@@ -32,10 +32,13 @@ class LogDialog(QDialog):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        self.log_output = QTextEdit()
+        self.log_output = QPlainTextEdit()
         self.log_output.setReadOnly(True)
+        self.log_output.setMaximumBlockCount(2000)
         self.log_output.setFont(QFont("Courier New", 10) if os.name == "nt" else QFont("Menlo", 10))
-        self.log_output.setStyleSheet("background-color: #0F0F0F; color: #FFFFFF; border: 1px solid #000000; border-radius: 3px;")
+        self.log_output.setStyleSheet(
+            "background-color: #0F0F0F; color: #FFFFFF; border: 1px solid #000000; border-radius: 3px;"
+        )
         layout.addWidget(self.log_output)
 
         btn_close = QPushButton("关闭")
@@ -43,17 +46,14 @@ class LogDialog(QDialog):
         layout.addWidget(btn_close)
 
     def append_log(self, message):
-        self.log_output.append(message)
+        self.log_output.appendPlainText(message)
         # 自动滚动到底部
-        self.log_output.verticalScrollBar().setValue(
-            self.log_output.verticalScrollBar().maximum()
-        )
+        self.log_output.verticalScrollBar().setValue(self.log_output.verticalScrollBar().maximum())
 
     def set_initial_logs(self, logs):
         self.log_output.setPlainText(logs)
-        self.log_output.verticalScrollBar().setValue(
-            self.log_output.verticalScrollBar().maximum()
-        )
+        self.log_output.verticalScrollBar().setValue(self.log_output.verticalScrollBar().maximum())
+
 
 class AddTaskDialog(QDialog):
     def __init__(self, parent=None):
@@ -147,7 +147,9 @@ class AddTaskDialog(QDialog):
         layout.addLayout(btns_layout)
 
     def _select_dir(self):
-        directory = QFileDialog.getExistingDirectory(self, "选择保存目录", self.selected_download_path)
+        directory = QFileDialog.getExistingDirectory(
+            self, "选择保存目录", self.selected_download_path
+        )
         if directory:
             self.selected_download_path = directory
             self.dir_input.setText(directory)
@@ -158,11 +160,15 @@ class AddTaskDialog(QDialog):
             "save_path": self.dir_input.text(),
             "format_preset": FORMAT_PRESETS[self.format_combo.currentText()],
             "proxy": self.proxy_input.text().strip() or None,
-            "concurrent_fragments": int(self.concurrent_input.text()) if self.concurrent_input.text().isdigit() else None,
+            "concurrent_fragments": int(self.concurrent_input.text())
+            if self.concurrent_input.text().isdigit()
+            else None,
             "write_subs": self.write_subs_checkbox.isChecked(),
             "download_playlist": self.download_playlist_checkbox.isChecked(),
             "playlist_items": self.playlist_items_input.text().strip() or None,
-            "max_downloads": int(self.max_downloads_input.text()) if self.max_downloads_input.text().isdigit() else None,
+            "max_downloads": int(self.max_downloads_input.text())
+            if self.max_downloads_input.text().isdigit()
+            else None,
         }
 
 
@@ -217,8 +223,7 @@ class AboutDialog(QDialog):
 
         # 简介
         desc_label = QLabel(
-            "基于 yt-dlp 构建的开源视频下载工具\n"
-            "支持 YouTube、Bilibili、Vimeo 等数千个视频平台"
+            "基于 yt-dlp 构建的开源视频下载工具\n支持 YouTube、Bilibili、Vimeo 等数千个视频平台"
         )
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc_label.setWordWrap(True)
@@ -250,4 +255,3 @@ class AboutDialog(QDialog):
         btn_row.addWidget(btn_close)
         btn_row.addStretch()
         layout.addLayout(btn_row)
-

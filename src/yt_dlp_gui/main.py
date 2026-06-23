@@ -10,7 +10,7 @@ except PackageNotFoundError:
     __version__ = "0.0.0-dev"
 import click
 import qtawesome as qta
-from PySide6.QtCore import QSize, Qt, QThread, QUrl, Slot
+from PySide6.QtCore import QSize, Qt, QUrl, Slot
 from PySide6.QtGui import QAction, QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -31,10 +31,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .config import STYLESHEET_FILE
+from .config import STYLESHEET_FILE, get_task_log_path
 from .database import Database
 from .dialogs import AboutDialog, AddTaskDialog, LogDialog
-from .worker import DownloadWorker
+from .scheduler import DownloadScheduler
 
 
 def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
@@ -57,15 +57,21 @@ def load_stylesheet(filename: str = STYLESHEET_FILE) -> str | None:
                 continue
     return None
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.db = Database()
-        self.workers: Dict[int, DownloadWorker] = {}
-        self.threads: Dict[int, QThread] = {}
-        self.task_logs: Dict[int, str] = {}  # 存储任务日志
+        self.scheduler = DownloadScheduler(self.db)
         self.active_log_dialogs: Dict[int, Any] = {}  # 跟踪打开的日志窗口
-        self._pending_delete_tids: set[int] = set()  # 「停止后删除」的挂起任务 ID
+
+        # 连接调度器信号
+        self.scheduler.task_added.connect(self._add_task_to_table)
+        self.scheduler.task_status_changed.connect(self._on_scheduler_status_changed)
+        self.scheduler.task_progress_changed.connect(self._on_scheduler_progress)
+        self.scheduler.task_title_updated.connect(self._on_scheduler_title_updated)
+        self.scheduler.task_log_emitted.connect(self._on_log)
+        self.scheduler.task_deleted.connect(self._on_scheduler_deleted)
         # task_id → row 反向映射，使 _update_table_row 从 O(n) 降为 O(1)
         self._task_row_map: dict[int, int] = {}
         # 排序选项：显示文本 → (sort_col, sort_dir)
@@ -89,18 +95,18 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(8, 8, 8, 8) # 缩小边距
+        main_layout.setContentsMargins(8, 8, 8, 8)  # 缩小边距
         main_layout.setSpacing(0)
 
         # 容器面板 Panel
         self.table_panel = QFrame()
         self.table_panel.setObjectName("table_panel")
         panel_layout = QVBoxLayout(self.table_panel)
-        panel_layout.setContentsMargins(0, 0, 0, 0) # 去掉内边距，使表格填充满面板
+        panel_layout.setContentsMargins(0, 0, 0, 0)  # 去掉内边距，使表格填充满面板
 
         # 下载列表表格
         self.table = QTableWidget()
-        self.table.setColumnCount(5) # 名称, 状态, 进度, 速度, 剩余时间
+        self.table.setColumnCount(5)  # 名称, 状态, 进度, 速度, 剩余时间
         self.table.setHorizontalHeaderLabels(["名称", "状态", "进度", "速度", "剩余时间"])
 
         self.table.verticalHeader().setVisible(False)
@@ -173,7 +179,9 @@ class MainWindow(QMainWindow):
         # 排序控件：弹性间隔 + QToolButton+QMenu，风格与左侧工具栏按鈕完全一致
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        spacer.setStyleSheet("background: transparent;")  # 避免继承 QWidget 的 #1E1E1E 而与工具栏背景不符
+        spacer.setStyleSheet(
+            "background: transparent;"
+        )  # 避免继承 QWidget 的 #1E1E1E 而与工具栏背景不符
         toolbar.addWidget(spacer)
 
         self.sort_button = QToolButton(self)
@@ -200,7 +208,7 @@ class MainWindow(QMainWindow):
         if status == "downloading":
             return qta.icon("fa5s.download", color="#FFFFFF")
         elif status == "finished":
-            return qta.icon("fa5s.check-circle", color="#4CAF50") # 绿色图标
+            return qta.icon("fa5s.check-circle", color="#4CAF50")  # 绿色图标
         elif status == "error":
             return qta.icon("fa5s.exclamation-circle", color="#FFFFFF")
         elif status == "merging":
@@ -269,7 +277,9 @@ class MainWindow(QMainWindow):
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
-        open_folder_action = menu.addAction(qta.icon("fa5s.folder-open", color="#FFFFFF"), "打开保存文件夹")
+        open_folder_action = menu.addAction(
+            qta.icon("fa5s.folder-open", color="#FFFFFF"), "打开保存文件夹"
+        )
         view_log_action = menu.addAction(qta.icon("fa5s.file-alt", color="#FFFFFF"), "查看详细日志")
         menu.addSeparator()
         start_action = menu.addAction(qta.icon("fa5s.play", color="#FFFFFF"), "开始 / 重试")
@@ -297,8 +307,8 @@ class MainWindow(QMainWindow):
             return
 
         task = self.db.get_task(task_id)
-        if task and task['save_path']:
-            path = task['save_path']
+        if task and task["save_path"]:
+            path = task["save_path"]
             if os.path.exists(path):
                 QDesktopServices.openUrl(QUrl.fromLocalFile(path))
             else:
@@ -322,7 +332,15 @@ class MainWindow(QMainWindow):
             return
 
         dialog = LogDialog(task_id, title, self)
-        dialog.set_initial_logs(self.task_logs.get(task_id, "暂无日志信息...\n"))
+        logs = "暂无日志信息...\n"
+        try:
+            log_path = get_task_log_path(task_id)
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                    logs = f.read()
+        except Exception as e:
+            logs = f"无法读取日志: {e}\n"
+        dialog.set_initial_logs(logs)
         dialog.finished.connect(lambda: self.active_log_dialogs.pop(task_id, None))
         self.active_log_dialogs[task_id] = dialog
         dialog.show()
@@ -334,13 +352,7 @@ class MainWindow(QMainWindow):
             task_data = dialog.get_task_data()
             if not task_data["url"]:
                 return
-            task_id = self.db.add_task(task_data)
-            task = self.db.get_task(task_id)
-            if task is None:
-                return
-
-            self._add_task_to_table(task)
-            self._start_task(task_id)
+            self.scheduler.add_task(task_data)
 
     def _get_task_id_from_row(self, row):
         item = self.table.item(row, 0)
@@ -351,72 +363,32 @@ class MainWindow(QMainWindow):
         for row in rows:
             tid = self._get_task_id_from_row(row)
             if tid:
-                self._start_task(tid)
-
-    def _start_task(self, task_id):
-        if task_id in self.threads:
-            return
-        task = self.db.get_task(task_id)
-        if not task:
-            return
-
-        self.db.update_task(task_id, {"status": "downloading"})
-        self._update_table_row(task_id, {"status": "downloading"})
-
-        thread = QThread()
-        worker = DownloadWorker(
-            task_id=task_id,
-            url=task['url'],
-            download_path=task['save_path'],
-            format_preset=task['format_preset'],
-            proxy=task['proxy'],
-            concurrent_fragments=task['concurrent_fragments'],
-            write_subs=task['write_subs'],
-            download_playlist=task['download_playlist'],
-            playlist_items=task['playlist_items']
-        )
-        worker.moveToThread(thread)
-        worker.progress.connect(self._on_progress)
-        worker.finished.connect(self._on_finished)
-        worker.log_message.connect(self._on_log)  # 连接日志信号
-        thread.started.connect(worker.run)
-        # 线程退出后异步清理资源，避免在 _on_finished 中调用 thread.wait() 阻塞主线程
-        thread.finished.connect(lambda tid=task_id: self._cleanup_thread(tid))
-
-        self.threads[task_id] = thread
-        self.workers[task_id] = worker
-        thread.start()
+                self.scheduler.start_task(tid)
 
     def _stop_selected_task(self):
         rows = set(index.row() for index in self.table.selectedIndexes())
         for row in rows:
             tid = self._get_task_id_from_row(row)
-            if tid and tid in self.workers:
-                self.workers[tid].cancel()
+            if tid:
+                self.scheduler.stop_task(tid)
 
     def _delete_selected_task(self) -> None:
         indices = self.table.selectionModel().selectedRows()
         if not indices:
             return
 
-        # 分类：静止任务（可直接删） vs 运行中任务（需先停止）
-        idle_indices: list = []
-        running_tids: list[int] = []
-        for index in indices:
-            tid = self._get_task_id_from_row(index.row())
-            if tid is None:
-                continue
-            if tid in self.threads:
-                running_tids.append(tid)
-            else:
-                idle_indices.append(index)
+        tids = [self._get_task_id_from_row(idx.row()) for idx in indices]
+        tids = [tid for tid in tids if tid is not None]
+
+        # 分类：静止任务 vs 运行中任务
+        running_tids = [tid for tid in tids if tid in self.scheduler.threads]
+        idle_tids = [tid for tid in tids if tid not in self.scheduler.threads]
 
         if running_tids:
-            # 有运行中任务：给出明确提示，提供「停止并删除」选项
             msg = (
-                f"选中的 {len(indices)} 个任务中，"
+                f"选中的 {len(tids)} 个任务中，"
                 f"有 {len(running_tids)} 个正在下载。\n\n"
-                f"是否立即停止并删除全部 {len(indices)} 个任务？"
+                f"是否立即停止并删除全部 {len(tids)} 个任务？"
             )
             confirm = QMessageBox.question(
                 self,
@@ -426,22 +398,57 @@ class MainWindow(QMainWindow):
             )
             if confirm != QMessageBox.StandardButton.Yes:
                 return
-            # 取消运行中任务，实际行删除由 _cleanup_thread 中的 pending 机制处理
-            for tid in running_tids:
-                if tid in self.workers:
-                    self.workers[tid].cancel()
-            self._pending_delete_tids.update(running_tids)
         else:
-            # 无运行中任务：普通确认即可
             confirm = QMessageBox.question(
                 self,
                 "确认删除",
-                f"确定要删除选中的 {len(idle_indices)} 个任务吗？",
+                f"确定要删除选中的 {len(idle_tids)} 个任务吗？",
             )
             if confirm != QMessageBox.StandardButton.Yes:
                 return
 
-        self._delete_idle_rows(idle_indices)
+        # 循环删除所有选中的任务
+        for tid in tids:
+            self.scheduler.delete_task(tid)
+
+    def _on_scheduler_status_changed(self, task_id: int, status: str) -> None:
+        self._update_table_row(task_id, {"status": status})
+
+    @Slot(int, dict)
+    def _on_scheduler_progress(self, task_id: int, data: dict[str, Any]) -> None:
+        if data["status"] == "downloading":
+            total = data.get("total_bytes") or data.get("total_bytes_estimate")
+            downloaded = data.get("downloaded_bytes")
+
+            progress = 0
+            if total and downloaded:
+                progress = int(downloaded / total * 100)
+
+            speed_str = data.get("speed_str") or data.get("_speed_str")
+            if speed_str:
+                speed_str = self._clean_ansi(speed_str)
+            else:
+                speed_str = self._format_speed(data.get("speed"))
+
+            eta_str = data.get("eta_str") or data.get("_eta_str")
+            if eta_str:
+                eta_str = self._clean_ansi(eta_str)
+            else:
+                eta_str = self._format_eta(data.get("eta"))
+
+            self._update_table_row(
+                task_id, {"progress": progress, "speed": speed_str, "eta": eta_str}
+            )
+        elif data["status"] == "merging":
+            self._update_table_row(
+                task_id, {"status": "merging", "speed": "Merging...", "eta": "--"}
+            )
+
+    def _on_scheduler_title_updated(self, task_id: int, title: str) -> None:
+        self._update_table_row(task_id, {"title": title})
+
+    def _on_scheduler_deleted(self, task_id: int) -> None:
+        self._remove_table_row_by_task_id(task_id)
         self._update_status_counts()
 
     def _update_table_row(self, task_id: int, data: dict[str, Any]) -> None:
@@ -484,8 +491,9 @@ class MainWindow(QMainWindow):
         if not isinstance(text, str):
             return text
         import re
-        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-        return ansi_escape.sub('', text).strip()
+
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+        return ansi_escape.sub("", text).strip()
 
     def _format_speed(self, speed):
         """格式化下载速度"""
@@ -495,7 +503,7 @@ class MainWindow(QMainWindow):
             return self._clean_ansi(speed)
 
         # 处理数值类型
-        for unit in ['B/s', 'KB/s', 'MB/s', 'GB/s']:
+        for unit in ["B/s", "KB/s", "MB/s", "GB/s"]:
             if speed < 1024.0:
                 return f"{speed:.1f} {unit}"
             speed /= 1024.0
@@ -519,86 +527,11 @@ class MainWindow(QMainWindow):
         except (ValueError, TypeError):
             return "--"
 
-    @Slot(int, dict)
-    def _on_progress(self, task_id, data):
-        # 尝试从 info_dict 获取标题并更新
-        if 'info_dict' in data and data['info_dict'].get('title'):
-            title = self._clean_ansi(data['info_dict']['title'])
-            self.db.update_task(task_id, {"title": title})
-            self._update_table_row(task_id, {"title": title})
-
-        if data['status'] == 'downloading':
-            total = data.get('total_bytes') or data.get('total_bytes_estimate')
-            downloaded = data.get('downloaded_bytes')
-
-            # 计算进度百分比
-            progress = 0
-            if total and downloaded:
-                progress = int(downloaded / total * 100)
-
-            # 优先使用 yt-dlp 提供的字符串，否则手动格式化原始数值
-            speed_str = data.get('speed_str') or data.get('_speed_str')
-            if speed_str:
-                speed_str = self._clean_ansi(speed_str)
-            else:
-                speed_str = self._format_speed(data.get('speed'))
-
-            eta_str = data.get('eta_str') or data.get('_eta_str')
-            if eta_str:
-                eta_str = self._clean_ansi(eta_str)
-            else:
-                eta_str = self._format_eta(data.get('eta'))
-
-            # 始终更新 UI
-            self._update_table_row(task_id, {
-                "progress": progress,
-                "speed": speed_str,
-                "eta": eta_str
-            })
-        elif data['status'] == 'merging':
-            self._update_table_row(task_id, {"status": "merging", "speed": "Merging...", "eta": "--"})
-
     @Slot(int, str)
     def _on_log(self, task_id, msg):
-        # 存储日志
-        current_logs = self.task_logs.get(task_id, "")
-        self.task_logs[task_id] = current_logs + msg + "\n"
-
         # 如果日志窗口打开，实时更新
         if task_id in self.active_log_dialogs:
             self.active_log_dialogs[task_id].append_log(msg)
-
-    @Slot(int, bool, str)
-    def _on_finished(self, task_id: int, success: bool, message: str) -> None:
-        status = "finished" if success else ("cancelled" if "用户取消" in message else "error")
-        # 完成时清空速度和剩余时间
-        updates = {
-            "status": status,
-            "progress": 100 if success else 0,
-            "speed": "--",
-            "eta": "--",
-        }
-        self.db.update_task(task_id, updates)
-        self._update_table_row(task_id, updates)
-
-        # 只发出退出请求，实际资源清理由 thread.finished → _cleanup_thread 异步完成
-        # 严禁在此处调用 thread.wait()，否则会阻塞主线程（GUI 线程）
-        if task_id in self.threads:
-            self.threads[task_id].quit()
-
-    def _cleanup_thread(self, task_id: int) -> None:
-        """线程退出后异步清理资源（由 thread.finished 信号触发，运行在主线程）"""
-        thread = self.threads.pop(task_id, None)
-        self.workers.pop(task_id, None)
-        if thread is not None:
-            thread.deleteLater()  # 让 Qt 事件循环负责内存回收
-
-        # 处理「停止后删除」的挂起请求
-        if task_id in self._pending_delete_tids:
-            self._pending_delete_tids.discard(task_id)
-            self.db.delete_task(task_id)
-            self._remove_table_row_by_task_id(task_id)
-            self._update_status_counts()
 
     def _remove_row_from_map(self, deleted_row: int, task_id: int) -> None:
         """从 _task_row_map 删除指定条目，并将该行以下所有条目的 row 值 -1"""
@@ -606,15 +539,6 @@ class MainWindow(QMainWindow):
         for tid in self._task_row_map:
             if self._task_row_map[tid] > deleted_row:
                 self._task_row_map[tid] -= 1
-
-    def _delete_idle_rows(self, indices: list) -> None:
-        """删除非运行中任务的表格行和 DB 记录（逆序删除避免行号偏移）"""
-        for index in reversed(sorted(indices, key=lambda x: x.row())):
-            tid = self._get_task_id_from_row(index.row())
-            if tid:
-                self.db.delete_task(tid)
-                self._remove_row_from_map(index.row(), tid)
-            self.table.removeRow(index.row())
 
     def _remove_table_row_by_task_id(self, task_id: int) -> None:
         """O(1) 按 task_id 查找并删除表格行"""
@@ -625,16 +549,11 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         """窗口关闭时优雅停止所有任务并释放资源"""
-        # 取消所有运行中的下载
-        for worker in list(self.workers.values()):
-            worker.cancel()
-        # 等待线程退出（关闭场景允许短暂阻塞，最多 3 秒/线程）
-        for thread in list(self.threads.values()):
-            thread.quit()
-            thread.wait(3000)
+        self.scheduler.shutdown()
         # 显式关闭持久数据库连接
         self.db.close()
         event.accept()
+
 
 def run_gui():
     app = QApplication(sys.argv)
@@ -642,10 +561,12 @@ def run_gui():
     window.show()
     sys.exit(app.exec())
 
+
 @click.command()
 @click.version_option(version=__version__)
 def cli() -> None:
     run_gui()
+
 
 if __name__ == "__main__":
     cli()

@@ -14,3 +14,5 @@ docs/
 .DS_Store
 .agent
 .coverage
+.codegraph
+AGENTS.md

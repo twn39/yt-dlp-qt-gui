@@ -1,19 +1,23 @@
 """数据库访问层
 
-使用单一持久 SQLite 连接 + WAL 日志模式 + 线程锁，
-解决高频写入（进度更新约 1 次/秒/任务）下的连接开销和线程安全问题。
-
-设计要点：
-- WAL 模式：读写并发，读操作无需锁
-- 写操作（add/update/delete）使用 threading.Lock 互斥
-- 读操作（get/get_all）直接执行，WAL 模式下天然并发安全
-- close() 供 MainWindow.closeEvent 显式调用
+使用单一持久 SQLite 连接 + WAL 日志模式 + 队列工作线程，
+彻底解决多线程高频写入下的连接开销和数据库锁竞争 (database is locked) 问题。
 """
 
 import os
+import queue
 import sqlite3
 import threading
-from typing import Any, Optional
+from typing import Any, Callable, Optional
+
+
+class DbTask:
+    """封装数据库任务以及用于返回结果的线程安全队列"""
+
+    def __init__(self, func: Callable[[sqlite3.Connection], Any]) -> None:
+        self.func = func
+        # 结果队列，保存元素形式为 (success_bool, result_or_exception)
+        self.result_queue = queue.Queue[tuple[bool, Any]](maxsize=1)
 
 
 class Database:
@@ -25,27 +29,59 @@ class Database:
         else:
             self.db_path = db_path
 
-        # 单一持久连接，check_same_thread=False 允许主线程和 Worker 线程共享
-        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        # 任务队列，用于传递 DbTask 或用于停止的 None (毒丸)
+        self._queue = queue.Queue[Optional[DbTask]]()
 
-        # WAL 模式：写入不阻塞读取，大幅提升高频更新场景性能
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        # WAL 模式下 NORMAL 级别安全且比 FULL 快
-        self._conn.execute("PRAGMA synchronous=NORMAL")
-
-        # 写操作互斥锁（读操作在 WAL 模式下无需锁）
-        self._write_lock = threading.Lock()
+        # 启动后台持久化数据库工作线程
+        self._worker_thread = threading.Thread(target=self._db_worker, daemon=True)
+        self._worker_thread.start()
 
         self._init_db()
 
+    def _db_worker(self) -> None:
+        """后台数据库工作线程的主循环，保证所有 SQL 操作都在单线程内顺序执行"""
+        # 在此后台线程中开启连接，确保 check_same_thread 安全
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+
+        # WAL 模式与同步级别优化
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+
+        while True:
+            task = self._queue.get()
+            if task is None:  # 收到毒丸，准备关闭
+                self._queue.task_done()
+                break
+
+            try:
+                # 执行具体 closure 并返回结果
+                result = task.func(conn)
+                task.result_queue.put((True, result))
+            except Exception as e:
+                task.result_queue.put((False, e))
+            finally:
+                self._queue.task_done()
+
+        conn.close()
+
+    def _execute_sync(self, func: Callable[[sqlite3.Connection], Any]) -> Any:
+        """同步执行任务：向队列投递任务并阻塞等待后台线程返回结果"""
+        task = DbTask(func)
+        self._queue.put(task)
+        success, result = task.result_queue.get()
+        if not success:
+            raise result
+        return result
+
     def close(self) -> None:
-        """显式关闭数据库连接（供 MainWindow.closeEvent 调用）"""
-        self._conn.close()
+        """显式关闭数据库连接"""
+        self._queue.put(None)
+        self._worker_thread.join(timeout=3)
 
     def _init_db(self) -> None:
-        with self._write_lock:
-            self._conn.execute("""
+        def init_func(conn: sqlite3.Connection) -> None:
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     url TEXT NOT NULL,
@@ -66,50 +102,59 @@ class Database:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            self._conn.commit()
+            conn.commit()
+
+        self._execute_sync(init_func)
 
     def add_task(self, task_data: dict[str, Any]) -> int:
-        query = """
-            INSERT INTO tasks (
-                url, title, status, save_path, format_preset, proxy,
-                concurrent_fragments, write_subs, download_playlist,
-                playlist_items, playlist_random, max_downloads
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        params = (
-            task_data["url"],
-            task_data.get("title", "正在解析..."),
-            "pending",
-            task_data["save_path"],
-            task_data["format_preset"],
-            task_data.get("proxy"),
-            task_data.get("concurrent_fragments"),
-            task_data.get("write_subs", False),
-            task_data.get("download_playlist", False),
-            task_data.get("playlist_items"),
-            task_data.get("playlist_random", False),
-            task_data.get("max_downloads"),
-        )
-        with self._write_lock:
-            cursor = self._conn.execute(query, params)
-            self._conn.commit()
-            assert cursor.lastrowid is not None  # INSERT 成功后 lastrowid 必不为 None
+        def add_func(conn: sqlite3.Connection) -> int:
+            query = """
+                INSERT INTO tasks (
+                    url, title, status, save_path, format_preset, proxy,
+                    concurrent_fragments, write_subs, download_playlist,
+                    playlist_items, playlist_random, max_downloads
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            params = (
+                task_data["url"],
+                task_data.get("title", "正在解析..."),
+                "pending",
+                task_data["save_path"],
+                task_data["format_preset"],
+                task_data.get("proxy"),
+                task_data.get("concurrent_fragments"),
+                task_data.get("write_subs", False),
+                task_data.get("download_playlist", False),
+                task_data.get("playlist_items"),
+                task_data.get("playlist_random", False),
+                task_data.get("max_downloads"),
+            )
+            cursor = conn.execute(query, params)
+            conn.commit()
+            assert cursor.lastrowid is not None
             return cursor.lastrowid
+
+        return self._execute_sync(add_func)
 
     def update_task(self, task_id: int, updates: dict[str, Any]) -> None:
         if not updates:
             return
-        columns = [f"{k} = ?" for k in updates.keys()]
-        query = f"UPDATE tasks SET {', '.join(columns)} WHERE id = ?"
-        params = list(updates.values()) + [task_id]
-        with self._write_lock:
-            self._conn.execute(query, params)
-            self._conn.commit()
+
+        def update_func(conn: sqlite3.Connection) -> None:
+            columns = [f"{k} = ?" for k in updates.keys()]
+            query = f"UPDATE tasks SET {', '.join(columns)} WHERE id = ?"
+            params = list(updates.values()) + [task_id]
+            conn.execute(query, params)
+            conn.commit()
+
+        self._execute_sync(update_func)
 
     def delete_task(self, task_id: int) -> None:
-        with self._write_lock:
-            self._conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
-            self._conn.commit()
+        def delete_func(conn: sqlite3.Connection) -> None:
+            conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+            conn.commit()
+
+        self._execute_sync(delete_func)
 
     # 允许排序的列白名单，防止 SQL 注入
     _SORT_COLS = frozenset({"created_at", "title", "status", "progress"})
@@ -126,14 +171,19 @@ class Database:
             sort_col: 排序列，必须在 _SORT_COLS 白名单中。
             sort_dir: 排序方向，"ASC" 或 "DESC"。
         """
-        # 防御性校验：不在白名单内回退到默认值
         col = sort_col if sort_col in self._SORT_COLS else "created_at"
         direction = sort_dir if sort_dir in self._SORT_DIRS else "DESC"
-        # 读操作：WAL 模式下与写操作并发安全，无需加锁
-        cursor = self._conn.execute(f"SELECT * FROM tasks ORDER BY {col} {direction}")  # noqa: S608
-        return [dict(row) for row in cursor.fetchall()]
+
+        def get_all_func(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+            cursor = conn.execute(f"SELECT * FROM tasks ORDER BY {col} {direction}")  # noqa: S608
+            return [dict(row) for row in cursor.fetchall()]
+
+        return self._execute_sync(get_all_func)
 
     def get_task(self, task_id: int) -> Optional[dict[str, Any]]:
-        cursor = self._conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
+        def get_func(conn: sqlite3.Connection) -> Optional[dict[str, Any]]:
+            cursor = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+        return self._execute_sync(get_func)
