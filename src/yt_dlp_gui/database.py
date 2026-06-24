@@ -35,6 +35,8 @@ class Database:
 
         # 任务队列，用于传递 DbTask 或用于停止的 None (毒丸)
         self._queue = queue.Queue[Optional[DbTask]]()
+        self._closed = False
+        self._close_lock = threading.Lock()
 
         # 启动后台持久化数据库工作线程
         self._worker_thread = threading.Thread(target=self._db_worker, daemon=True)
@@ -91,6 +93,10 @@ class Database:
 
     def close(self) -> None:
         """显式关闭数据库连接"""
+        with self._close_lock:
+            if self._closed:
+                return
+            self._closed = True
         self._queue.put(None)
         self._worker_thread.join(timeout=3)
 

@@ -2,7 +2,7 @@ import os
 import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import click
 import qtawesome as qta
@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 
 from .config import STYLESHEET_FILE, get_task_log_path
 from .database import Database
-from .dialogs import AboutDialog, AddTaskDialog, LogDialog
+from .dialogs import DialogManager
 from .models import DownloadTask, TaskTableModel
 from .scheduler import DownloadScheduler
 from .utils import clean_ansi, format_eta, format_speed
@@ -129,10 +129,16 @@ class ProgressDelegate(QStyledItemDelegate):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db: Database, scheduler: DownloadScheduler):
+    def __init__(
+        self,
+        db: Database,
+        scheduler: DownloadScheduler,
+        dialog_manager: Optional[DialogManager] = None,
+    ):
         super().__init__()
         self.db = db
         self.scheduler = scheduler
+        self.dialog_manager = dialog_manager or DialogManager(self)
         self.active_log_dialogs: Dict[int, Any] = {}  # 跟踪打开的日志窗口
 
         # 数据模型初始化
@@ -281,7 +287,7 @@ class MainWindow(QMainWindow):
 
     def _show_about_dialog(self) -> None:
         """显示「关于」对话框"""
-        AboutDialog(version=__version__, parent=self).exec()
+        self.dialog_manager.show_about(__version__)
 
     def _on_sort_changed(self, label: str) -> None:
         """排序选项变更时更新按鈕文字并重新加载"""
@@ -364,7 +370,6 @@ class MainWindow(QMainWindow):
             self.active_log_dialogs[task_id].activateWindow()
             return
 
-        dialog = LogDialog(task_id, title, self)
         logs = "暂无日志信息...\n"
         try:
             log_path = get_task_log_path(task_id)
@@ -373,18 +378,19 @@ class MainWindow(QMainWindow):
                     logs = f.read()
         except Exception as e:
             logs = f"无法读取日志: {e}\n"
-        dialog.set_initial_logs(logs)
-        dialog.finished.connect(lambda: self.active_log_dialogs.pop(task_id, None))
+
+        dialog = self.dialog_manager.show_log(
+            task_id,
+            title,
+            logs,
+            on_finished=lambda: self.active_log_dialogs.pop(task_id, None),
+        )
         self.active_log_dialogs[task_id] = dialog
-        dialog.show()
 
     @Slot()
     def _show_add_dialog(self) -> None:
-        dialog = AddTaskDialog(self)
-        if dialog.exec():
-            task = dialog.get_task_data()
-            if not task.url:
-                return
+        task = self.dialog_manager.show_add_task()
+        if task:
             self.scheduler.add_task(task)
 
     def _get_task_id_from_row(self, row):
@@ -502,10 +508,10 @@ class MainWindow(QMainWindow):
             self.active_log_dialogs[task_id].append_log(msg)
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
-        """窗口关闭时优雅停止所有任务并释放资源"""
-        self.scheduler.shutdown()
-        # 显式关闭持久数据库连接
-        self.db.close()
+        """窗口关闭事件处理"""
+        # 关闭所有打开的日志对话框
+        for dialog in list(self.active_log_dialogs.values()):
+            dialog.close()
         event.accept()
 
 
@@ -513,9 +519,19 @@ def run_gui():
     app = QApplication(sys.argv)
     db = Database()
     scheduler = DownloadScheduler(db)
-    window = MainWindow(db, scheduler)
-    window.show()
-    sys.exit(app.exec())
+
+    # 绑定生命周期（当事件循环正常退出时，在 app 销毁前触发）
+    app.aboutToQuit.connect(scheduler.shutdown)
+    app.aboutToQuit.connect(db.close)
+
+    try:
+        window = MainWindow(db, scheduler)
+        window.show()
+        sys.exit(app.exec())
+    finally:
+        # 双重保障，确保在非 GUI 环境下或在异常退出时也能正确释放资源
+        scheduler.shutdown()
+        db.close()
 
 
 @click.command()

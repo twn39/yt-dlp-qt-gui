@@ -1,0 +1,19 @@
+{
+  "include": [
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    "dist",
+    "build"
+  ],
+  "output": ".codegraph",
+  "languages": [
+    "python"
+  ],
+  "cache": true
+}

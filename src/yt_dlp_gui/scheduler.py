@@ -31,6 +31,7 @@ class DownloadScheduler(QObject):
         self._waiting_queue: List[int] = []
         self._active_task_ids: Set[int] = set()
         self._pending_delete_tids: Set[int] = set()
+        self._is_shutdown = False
 
     def add_task(self, task: DownloadTask) -> int:
         """添加新任务到数据库，并调度启动"""
@@ -189,6 +190,10 @@ class DownloadScheduler(QObject):
 
     def shutdown(self) -> None:
         """优雅关闭所有运行中的下载线程"""
+        if self._is_shutdown:
+            return
+        self._is_shutdown = True
+
         # 取消所有 Worker 运行
         for worker in list(self.workers.values()):
             worker.cancel()

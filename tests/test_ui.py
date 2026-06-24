@@ -110,3 +110,29 @@ def test_on_scheduler_status_changed_updates_fields(app_window):
     assert model.data(model.index(0, 2), Qt.ItemDataRole.DisplayRole) == 0
     assert model.data(model.index(0, 3), Qt.ItemDataRole.DisplayRole) == "--"
     assert model.data(model.index(0, 4), Qt.ItemDataRole.DisplayRole) == "--"
+
+
+def test_mainwindow_show_about_calls_dialog(app_window):
+    """验证 MainWindow 触发关于对话框时，调用了 dialog_manager"""
+    from unittest.mock import MagicMock
+
+    app_window.dialog_manager = MagicMock()
+    app_window._show_about_dialog()
+    app_window.dialog_manager.show_about.assert_called_once()
+
+
+def test_mainwindow_show_add_task_success(app_window):
+    """验证当 dialog_manager.show_add_task 返回有效任务时，scheduler 正确添加任务"""
+    from unittest.mock import MagicMock
+
+    mock_task = DownloadTask(
+        url="https://example.com/video",
+        save_path="/tmp",
+        format_preset="mp4",
+    )
+    app_window.dialog_manager = MagicMock()
+    app_window.dialog_manager.show_add_task.return_value = mock_task
+
+    app_window.scheduler = MagicMock()
+    app_window._show_add_dialog()
+    app_window.scheduler.add_task.assert_called_once_with(mock_task)

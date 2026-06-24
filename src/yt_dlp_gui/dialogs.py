@@ -1,4 +1,5 @@
 import os
+from typing import Callable, Optional
 
 import qtawesome as qta
 from PySide6.QtCore import QStandardPaths, Qt, QUrl
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from .components import Switch
@@ -270,3 +272,32 @@ class AboutDialog(QDialog):
         btn_row.addWidget(btn_close)
         btn_row.addStretch()
         layout.addLayout(btn_row)
+
+
+class DialogManager:
+    """对话框管理器，用于解耦 MainWindow 对具体对话框类的直接实例化依赖"""
+
+    def __init__(self, parent_window: QWidget) -> None:
+        self.parent = parent_window
+
+    def show_about(self, version: str) -> None:
+        """显示关于对话框"""
+        dialog = AboutDialog(version=version, parent=self.parent)
+        dialog.exec()
+
+    def show_add_task(self) -> Optional[DownloadTask]:
+        """显示添加任务对话框，若确认且数据有效，则返回 DownloadTask 实体，否则返回 None"""
+        dialog = AddTaskDialog(parent=self.parent)
+        if dialog.exec():
+            return dialog.get_task_data()
+        return None
+
+    def show_log(
+        self, task_id: int, title: str, logs: str, on_finished: Callable[[], None]
+    ) -> QDialog:
+        """显示非模态的任务日志对话框"""
+        dialog = LogDialog(task_id=task_id, title=title, parent=self.parent)
+        dialog.set_initial_logs(logs)
+        dialog.finished.connect(on_finished)
+        dialog.show()
+        return dialog
