@@ -6,7 +6,16 @@ from typing import Any, Dict, Optional
 
 import click
 import qtawesome as qta
-from PySide6.QtCore import QModelIndex, QPersistentModelIndex, QRect, QSize, Qt, QUrl, Slot
+from PySide6.QtCore import (
+    QModelIndex,
+    QPersistentModelIndex,
+    QRect,
+    QSize,
+    QSortFilterProxyModel,
+    Qt,
+    QUrl,
+    Slot,
+)
 from PySide6.QtGui import QAction, QColor, QDesktopServices, QLinearGradient, QPainter
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -14,6 +23,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -184,7 +194,14 @@ class MainWindow(QMainWindow):
 
         # 下载列表表格
         self.table = QTableView()
-        self.table.setModel(self.table_model)
+
+        # 创建并挂载 Proxy Model
+        self.proxy_model = QSortFilterProxyModel(self)
+        self.proxy_model.setSourceModel(self.table_model)
+        self.proxy_model.setFilterKeyColumn(0)  # 第 0 列：名称列
+        self.proxy_model.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
+        self.table.setModel(self.proxy_model)
         self.table.setItemDelegateForColumn(2, ProgressDelegate(self))
 
         self.table.verticalHeader().setVisible(False)
@@ -259,6 +276,19 @@ class MainWindow(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         spacer.setStyleSheet("background: transparent;")
         toolbar.addWidget(spacer)
+
+        # 搜索输入框
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText(" 搜索任务名称...")
+        self.search_input.setFixedWidth(180)
+        self.search_input.setClearButtonEnabled(True)
+
+        # 搜索框内置放大镜图标
+        search_action = QAction(qta.icon("fa5s.search", color="#888888"), "", self)
+        self.search_input.addAction(search_action, QLineEdit.ActionPosition.LeadingPosition)
+        self.search_input.textChanged.connect(self._on_search_changed)
+
+        toolbar.addWidget(self.search_input)
 
         self.sort_button = QToolButton(self)
         self.sort_button.setIcon(qta.icon("fa5s.sort-amount-down", color="#BBBBBB"))
@@ -394,7 +424,7 @@ class MainWindow(QMainWindow):
             self.scheduler.add_task(task)
 
     def _get_task_id_from_row(self, row):
-        index = self.table_model.index(row, 0)
+        index = self.proxy_model.index(row, 0)
         return index.data(Qt.ItemDataRole.UserRole) if index.isValid() else None
 
     def _start_selected_task(self):
@@ -513,6 +543,10 @@ class MainWindow(QMainWindow):
         for dialog in list(self.active_log_dialogs.values()):
             dialog.close()
         event.accept()
+
+    def _on_search_changed(self, text: str) -> None:
+        """当搜索输入框内容改变时，更新过滤器参数"""
+        self.proxy_model.setFilterFixedString(text.strip())
 
 
 def run_gui():

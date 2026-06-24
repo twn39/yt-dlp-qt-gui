@@ -136,3 +136,40 @@ def test_mainwindow_show_add_task_success(app_window):
     app_window.scheduler = MagicMock()
     app_window._show_add_dialog()
     app_window.scheduler.add_task.assert_called_once_with(mock_task)
+
+
+def test_mainwindow_search_filters_tasks(app_window):
+    """验证 MainWindow 搜索栏能正确过滤行显示"""
+    app_window.table_model.set_tasks([])
+    task_1 = DownloadTask(
+        id=1,
+        url="http://x.com/1",
+        title="Apple Keynote",
+        save_path=".",
+        format_preset="mp4",
+    )
+    task_2 = DownloadTask(
+        id=2,
+        url="http://x.com/2",
+        title="Banana Tutorial",
+        save_path=".",
+        format_preset="mp4",
+    )
+
+    app_window._add_task_to_table(task_1)
+    app_window._add_task_to_table(task_2)
+
+    # 初始应为 2 条
+    assert app_window.proxy_model.rowCount() == 2
+
+    # 输入 "apple"，过滤后应仅剩下 1 条（区分大小写测试）
+    app_window._on_search_changed("apple")
+    assert app_window.proxy_model.rowCount() == 1
+
+    # 输入 "xyz"，应匹配不到，数量为 0
+    app_window._on_search_changed("xyz")
+    assert app_window.proxy_model.rowCount() == 0
+
+    # 清空搜索框，应恢复为 2 条
+    app_window._on_search_changed("")
+    assert app_window.proxy_model.rowCount() == 2
