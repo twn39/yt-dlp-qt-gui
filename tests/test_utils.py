@@ -53,3 +53,14 @@ def test_format_eta() -> None:
     # Invalid / Unparsable inputs
     assert format_eta("not_a_number") == "not_a_number"
     assert format_eta([]) == "--"
+
+
+def test_setup_environment() -> None:
+    import os
+
+    from yt_dlp_gui.__main__ import setup_environment
+
+    # Run it
+    setup_environment()
+    paths = os.environ.get("PATH", "").split(os.pathsep)
+    assert len(paths) > 0
