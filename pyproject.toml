@@ -7,7 +7,7 @@ name = "yt-dlp-qt-gui"
 version = "0.6.0"
 description = "现代化视频下载工具，基于 yt-dlp 和 PySide6"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11, <3.15"
 license = "GPL-3.0-or-later"
 authors = [
     { name = "curry tang", email = "twn39@163.com" }
@@ -22,8 +22,10 @@ classifiers = [
     "Intended Audience :: End Users/Desktop",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Multimedia :: Video",
     "Topic :: Utilities",
 ]
@@ -65,7 +67,7 @@ dev = [
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py311"
 line-length = 100
 indent-width = 4
 
