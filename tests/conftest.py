@@ -12,7 +12,7 @@ def app_window(qtbot, tmp_path):
     db = Database(db_path=str(db_file))
     scheduler = DownloadScheduler(db)
 
-    window = MainWindow(db, scheduler)
+    window = MainWindow(scheduler, db)
     qtbot.addWidget(window)
 
     yield window

@@ -181,13 +181,27 @@ QStatusBar QLabel {
     padding: 0 2px;
 }
 
-/* 输入框（对话框内的表单用） */
+/* 输入框（对话框与工具栏用） */
 QLineEdit,
 QTextEdit,
 QComboBox {
     background-color: #121212;
-    border: 1px solid #080808;
-    border-radius: 3px;
+    border: 1px solid #282828;
+    border-radius: 4px;
     padding: 5px 10px;
     color: #FFFFFF;
+    selection-background-color: #4A90E2;
+}
+
+QLineEdit:focus,
+QTextEdit:focus,
+QComboBox:focus {
+    border: 1px solid #4A90E2;
+    background-color: #161616;
+}
+
+QLineEdit:hover,
+QTextEdit:hover,
+QComboBox:hover {
+    border: 1px solid #383838;
 }

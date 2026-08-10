@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot
 
@@ -32,6 +32,16 @@ class DownloadScheduler(QObject):
         self._active_task_ids: Set[int] = set()
         self._pending_delete_tids: Set[int] = set()
         self._is_shutdown = False
+
+    def get_all_tasks(
+        self, sort_col: str = "created_at", sort_dir: str = "DESC"
+    ) -> List[DownloadTask]:
+        """代理获取所有任务列表（提供给 UI Facade 访问）"""
+        return self.db.get_all_tasks(sort_col=sort_col, sort_dir=sort_dir)
+
+    def get_task(self, task_id: int) -> Optional[DownloadTask]:
+        """代理获取特定任务详情（提供给 UI Facade 访问）"""
+        return self.db.get_task(task_id)
 
     def add_task(self, task: DownloadTask) -> int:
         """添加新任务到数据库，并调度启动"""
@@ -175,18 +185,14 @@ class DownloadScheduler(QObject):
         self._schedule_next()
 
     def _schedule_next(self) -> None:
-        """从等待队列中提取任务并启动"""
-        if not self._waiting_queue:
-            return
-        if len(self._active_task_ids) < self.max_concurrent_downloads:
+        """从等待队列中提取任务并启动（非递归实现）"""
+        while self._waiting_queue and len(self._active_task_ids) < self.max_concurrent_downloads:
             next_task_id = self._waiting_queue.pop(0)
             task = self.db.get_task(next_task_id)
             if task:
                 self._active_task_ids.add(next_task_id)
                 self._run_task_thread(task)
-            else:
-                # 递归提取（处理已从数据库删除的任务）
-                self._schedule_next()
+                break
 
     def shutdown(self) -> None:
         """优雅关闭所有运行中的下载线程"""

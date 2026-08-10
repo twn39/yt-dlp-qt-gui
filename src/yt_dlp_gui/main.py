@@ -16,7 +16,17 @@ from PySide6.QtCore import (
     QUrl,
     Slot,
 )
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QLinearGradient, QPainter
+from PySide6.QtGui import (
+    QAction,
+    QColor,
+    QDesktopServices,
+    QDragEnterEvent,
+    QDropEvent,
+    QKeySequence,
+    QLinearGradient,
+    QPainter,
+    QShortcut,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -95,6 +105,12 @@ class ProgressDelegate(QStyledItemDelegate):
             if progress is None:
                 progress = 0
 
+            # 读取同一行的任务状态（第 1 列）
+            status_index = index.sibling(index.row(), 1)
+            status = (
+                status_index.data(Qt.ItemDataRole.DisplayRole) if status_index.isValid() else ""
+            )
+
             painter.save()
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -116,18 +132,30 @@ class ProgressDelegate(QStyledItemDelegate):
             painter.setBrush(QColor("#0D0D0D"))
             painter.drawRoundedRect(bg_rect, 3, 3)
 
-            # 绘制进度滑块（渐变色：从 #3D3D3D 到 #4A90E2）
-            if progress > 0:
-                chunk_w = int(bar_w * (progress / 100.0))
-                if chunk_w < 4 and progress > 0:
+            # 绘制状态感知进度滑块
+            if progress > 0 or status in ("downloading", "merging", "finished"):
+                effective_prog = 100 if status == "finished" else (progress if progress > 0 else 5)
+                chunk_w = int(bar_w * (effective_prog / 100.0))
+                if chunk_w < 4 and effective_prog > 0:
                     chunk_w = 4
                 if chunk_w > bar_w:
                     chunk_w = bar_w
 
                 chunk_rect = QRect(bar_x, bar_y, chunk_w, bar_h)
                 gradient = QLinearGradient(bar_x, bar_y, bar_x + chunk_w, bar_y)
-                gradient.setColorAt(0.0, QColor("#3D3D3D"))
-                gradient.setColorAt(1.0, QColor("#4A90E2"))
+
+                if status == "merging":
+                    gradient.setColorAt(0.0, QColor("#6A1B9A"))
+                    gradient.setColorAt(1.0, QColor("#AB47BC"))
+                elif status == "finished":
+                    gradient.setColorAt(0.0, QColor("#2E7D32"))
+                    gradient.setColorAt(1.0, QColor("#4CAF50"))
+                elif status == "error":
+                    gradient.setColorAt(0.0, QColor("#C62828"))
+                    gradient.setColorAt(1.0, QColor("#EF5350"))
+                else:
+                    gradient.setColorAt(0.0, QColor("#1565C0"))
+                    gradient.setColorAt(1.0, QColor("#4A90E2"))
 
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(gradient)
@@ -141,13 +169,13 @@ class ProgressDelegate(QStyledItemDelegate):
 class MainWindow(QMainWindow):
     def __init__(
         self,
-        db: Database,
         scheduler: DownloadScheduler,
+        db: Optional[Database] = None,
         dialog_manager: Optional[DialogManager] = None,
     ):
         super().__init__()
-        self.db = db
         self.scheduler = scheduler
+        self.db = db or scheduler.db
         self.dialog_manager = dialog_manager or DialogManager(self)
         self.active_log_dialogs: Dict[int, Any] = {}  # 跟踪打开的日志窗口
 
@@ -174,8 +202,12 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Yt-dlp GUI — 现代化视频下载管理器")
         self.resize(1100, 750)
 
+        # 启用拖拽支持 (Drag & Drop)
+        self.setAcceptDrops(True)
+
         self._setup_ui()
         self._setup_toolbar()
+        self._setup_shortcuts()
         self._apply_dark_theme()
         self._load_tasks_from_db()
 
@@ -325,14 +357,14 @@ class MainWindow(QMainWindow):
         self._load_tasks_from_db()
 
     def _load_tasks_from_db(self) -> None:
-        """从 DB 加载所有任务并刷新 Model"""
+        """通过 Scheduler Facade 加载所有任务并刷新 Model"""
         current = (
             self.sort_button.text()
             if hasattr(self, "sort_button")
             else next(iter(self._sort_options))
         )
         sort_col, sort_dir = self._sort_options.get(current, ("created_at", "DESC"))
-        tasks = self.db.get_all_tasks(sort_col=sort_col, sort_dir=sort_dir)
+        tasks = self.scheduler.get_all_tasks(sort_col=sort_col, sort_dir=sort_dir)
         self.table_model.set_tasks(tasks)
         self._update_status_counts()
 
@@ -372,7 +404,7 @@ class MainWindow(QMainWindow):
         if not task_id:
             return
 
-        task = self.db.get_task(task_id)
+        task = self.scheduler.get_task(task_id)
         if task and task.save_path:
             path = task.save_path
             if os.path.exists(path):
@@ -417,9 +449,49 @@ class MainWindow(QMainWindow):
         )
         self.active_log_dialogs[task_id] = dialog
 
+    def _setup_shortcuts(self) -> None:
+        """设置桌面级键盘快捷键"""
+        QShortcut(QKeySequence("Ctrl+N"), self, self._show_add_dialog)
+        QShortcut(QKeySequence("Ctrl+R"), self, self._load_tasks_from_db)
+        QShortcut(QKeySequence("F5"), self, self._load_tasks_from_db)
+        QShortcut(QKeySequence("Delete"), self, self._delete_selected_task)
+        QShortcut(QKeySequence("Space"), self, self._toggle_selected_task_start_stop)
+        QShortcut(QKeySequence("Esc"), self, lambda: self.search_input.clear())
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        """处理拖拽进入事件"""
+        if event.mimeData().hasUrls() or event.mimeData().hasText():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        """处理拖拽释放事件，提取 URL 并弹窗预填"""
+        url_text = ""
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            if urls:
+                url_text = urls[0].toString()
+        elif event.mimeData().hasText():
+            url_text = event.mimeData().text().strip()
+
+        if url_text:
+            self._show_add_dialog(initial_url=url_text)
+
+    def _toggle_selected_task_start_stop(self) -> None:
+        """空格键快捷开启或暂停选中的任务"""
+        indices = self.table.selectionModel().selectedRows()
+        if not indices:
+            return
+        for idx in indices:
+            tid = self._get_task_id_from_row(idx.row())
+            if tid:
+                if tid in self.scheduler.threads:
+                    self.scheduler.stop_task(tid)
+                else:
+                    self.scheduler.start_task(tid)
+
     @Slot()
-    def _show_add_dialog(self) -> None:
-        task = self.dialog_manager.show_add_task()
+    def _show_add_dialog(self, initial_url: str | None = None) -> None:
+        task = self.dialog_manager.show_add_task(initial_url=initial_url)
         if task:
             self.scheduler.add_task(task)
 
@@ -559,7 +631,7 @@ def run_gui():
     app.aboutToQuit.connect(db.close)
 
     try:
-        window = MainWindow(db, scheduler)
+        window = MainWindow(scheduler, db)
         window.show()
         sys.exit(app.exec())
     finally:

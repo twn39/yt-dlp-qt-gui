@@ -5,6 +5,7 @@ import qtawesome as qta
 from PySide6.QtCore import QStandardPaths, Qt, QUrl
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -59,16 +60,30 @@ class LogDialog(QDialog):
 
 
 class AddTaskDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, initial_url: str | None = None):
         super().__init__(parent)
         self.setWindowTitle("添加下载任务")
         self.setMinimumWidth(600)
         self.selected_download_path = self._get_default_download_path()
         self._setup_ui()
+        self._try_autofill_clipboard(initial_url)
 
     def _get_default_download_path(self) -> str:
         path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
         return path if path and os.path.exists(path) else "."
+
+    def _try_autofill_clipboard(self, initial_url: str | None = None) -> None:
+        """如果传入了初始 URL 则使用它，否则尝试从系统剪贴板自动填入有效 URL"""
+        if initial_url and initial_url.strip():
+            self.url_input.setText(initial_url.strip())
+            self.url_input.selectAll()
+            return
+
+        clipboard = QApplication.clipboard()
+        text = clipboard.text().strip() if clipboard else ""
+        if text.startswith(("http://", "https://", "www.")):
+            self.url_input.setText(text)
+            self.url_input.selectAll()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -285,9 +300,9 @@ class DialogManager:
         dialog = AboutDialog(version=version, parent=self.parent)
         dialog.exec()
 
-    def show_add_task(self) -> Optional[DownloadTask]:
+    def show_add_task(self, initial_url: str | None = None) -> Optional[DownloadTask]:
         """显示添加任务对话框，若确认且数据有效，则返回 DownloadTask 实体，否则返回 None"""
-        dialog = AddTaskDialog(parent=self.parent)
+        dialog = AddTaskDialog(parent=self.parent, initial_url=initial_url)
         if dialog.exec():
             return dialog.get_task_data()
         return None
