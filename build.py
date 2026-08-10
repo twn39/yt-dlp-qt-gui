@@ -44,12 +44,27 @@ def build():
 
     try:
         subprocess.run(cmd, check=True)
+
+        # 在 dist 目录放置 .metadata_never_index 防止 macOS Spotlight/Launchpad 检索项目内部构建副本导致重复图标
+        if os.path.exists("dist"):
+            open(os.path.join("dist", ".metadata_never_index"), "w").close()
+
+        # 支持 --install 自动安装到 /Applications
+        if "--install" in sys.argv:
+            app_src = os.path.join("dist", "yt-dlp-qt-gui.app")
+            if os.path.exists(app_src):
+                print("正在安装到 /Applications/yt-dlp-qt-gui.app...")
+                dest = "/Applications/yt-dlp-qt-gui.app"
+                if os.path.exists(dest):
+                    shutil.rmtree(dest)
+                shutil.copytree(app_src, dest)
+                clean_build_dirs()
+                print("✓ 已成功安装到 /Applications/yt-dlp-qt-gui.app！")
+
         print()
         print("=" * 50)
         print("✓ 打包完成！")
         print("=" * 50)
-        print("可执行文件位于: dist/yt-dlp-qt-gui")
-        print()
         print("注意事项:")
         print("- 打包后的应用仍需要系统安装 FFmpeg")
         print("- 首次运行可能需要防火墙权限")
