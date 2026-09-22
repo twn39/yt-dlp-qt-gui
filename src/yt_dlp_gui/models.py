@@ -25,7 +25,7 @@ class DownloadTask:
     playlist_random: bool = False
     max_downloads: Optional[int] = None
     impersonate: Optional[str] = None
-    no_cookies: bool = False
+    cookie_browser: Optional[str] = None  # 从本机浏览器导入 cookies：chrome / edge / None
     created_at: Optional[str] = None
 
     @classmethod
@@ -61,7 +61,7 @@ class DownloadTask:
             playlist_random=bool(data.get("playlist_random", False)),
             max_downloads=max_downloads,
             impersonate=data.get("impersonate") or None,
-            no_cookies=bool(data.get("no_cookies", False)),
+            cookie_browser=data.get("cookie_browser") or None,
             created_at=data.get("created_at"),
         )
 
