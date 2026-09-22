@@ -90,7 +90,7 @@ class DownloadScheduler(QObject):
             download_playlist=task.download_playlist,
             playlist_items=task.playlist_items,
             impersonate=task.impersonate,
-            no_cookies=task.no_cookies,
+            cookie_browser=task.cookie_browser,
         )
         worker.moveToThread(thread)
 

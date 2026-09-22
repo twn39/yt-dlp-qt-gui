@@ -4,6 +4,7 @@ Yt-dlp GUI 配置常量
 集中管理应用程序配置，便于维护和修改。
 """
 
+import json
 import os
 import sys
 import tempfile
@@ -121,6 +122,52 @@ def get_log_dir() -> str:
 def get_app_startup_log_path() -> str:
     """启动日志路径（顶层 try/except 会把 traceback 落在这里）"""
     return os.path.join(_config_dir(), "startup.log")
+
+
+# =====================
+# UI 状态持久化
+# =====================
+
+_UI_STATE_FILE = os.path.join(_config_dir(), "ui_state.json")
+
+
+def load_ui_state() -> dict:
+    """读取 UI 状态字典，不存在或损坏返回空 dict"""
+    try:
+        with open(_UI_STATE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_ui_state(state: dict) -> None:
+    """合并式写入 UI 状态（不覆盖未提供的字段）"""
+    existing = load_ui_state()
+    existing.update(state)
+    try:
+        with open(_UI_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(existing, f, ensure_ascii=False, indent=2)
+    except OSError:
+        pass  # 写不了就算了，别让 UI 崩
+
+
+def get_last_save_path() -> str:
+    """返回上次使用的保存目录，没有则回退到系统下载目录"""
+    state = load_ui_state()
+    p = state.get("last_save_path")
+    if p and os.path.isdir(p):
+        return p
+    # fallback：系统下载目录
+    if sys.platform == "darwin":
+        candidates = [os.path.expanduser("~/Downloads"), os.path.expanduser("~/Desktop")]
+    elif os.name == "nt":
+        candidates = [os.path.join(os.path.expanduser("~"), "Downloads"), "."]
+    else:
+        candidates = [os.path.expanduser("~/Downloads"), "."]
+    for c in candidates:
+        if os.path.isdir(c):
+            return c
+    return "."
 
 
 def get_task_log_path(task_id: int) -> str:
