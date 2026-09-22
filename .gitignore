@@ -7,6 +7,9 @@ wheels/
 *.egg-info
 docs/
 
+# PyInstaller 本地缓存（build.py 自动生成）
+.pyinstaller-cache/
+
 # Virtual environments
 .venv
 .idea

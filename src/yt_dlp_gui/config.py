@@ -5,6 +5,8 @@ Yt-dlp GUI 配置常量
 """
 
 import os
+import sys
+import tempfile
 from typing import Final
 
 # =====================
@@ -83,12 +85,42 @@ DEFAULT_MAX_DOWNLOADS: Final[str] = ""
 # =====================
 
 
+def _config_dir() -> str:
+    """返回可写的配置目录，依次尝试 ~/.yt-dlp-gui → 系统 temp"""
+    candidates = [os.path.expanduser("~/.yt-dlp-gui")]
+    # 打包后的 macOS 沙箱环境下 ~ 可能不可写，fallback 到 temp
+    if getattr(sys, "frozen", False):
+        candidates.append(os.path.join(tempfile.gettempdir(), ".yt-dlp-gui"))
+    for d in candidates:
+        try:
+            os.makedirs(d, exist_ok=True)
+            # 实际写一次验证权限（某些容器环境 exist_ok=True 也会"成功"返回但写不了）
+            probe = os.path.join(d, ".write_test")
+            with open(probe, "w") as f:
+                f.write("ok")
+            os.remove(probe)
+            return d
+        except OSError:
+            continue
+    # 极端兜底（正常不会走到）
+    fallback = tempfile.gettempdir()
+    os.makedirs(fallback, exist_ok=True)
+    return fallback
+
+
 def get_log_dir() -> str:
     """获取日志存储目录并确保其存在"""
-    config_dir = os.path.expanduser("~/.yt-dlp-gui")
-    log_dir = os.path.join(config_dir, "logs")
-    os.makedirs(log_dir, exist_ok=True)
+    log_dir = os.path.join(_config_dir(), "logs")
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+    except OSError:
+        log_dir = tempfile.gettempdir()
     return log_dir
+
+
+def get_app_startup_log_path() -> str:
+    """启动日志路径（顶层 try/except 会把 traceback 落在这里）"""
+    return os.path.join(_config_dir(), "startup.log")
 
 
 def get_task_log_path(task_id: int) -> str:
