@@ -205,6 +205,13 @@ class MainWindow(QMainWindow):
         # 启用拖拽支持 (Drag & Drop)
         self.setAcceptDrops(True)
 
+        # macOS：关闭 title bar 与 toolbar 的合并，保持标准原生窗口边框，
+        # 确保系统 Genie 最小化动画正常触发。
+        # Qt6 在 macOS 上 unifiedTitleAndToolBarOnMac 默认 True，会把 title bar
+        # 变成 toolbar 的延伸区域，AppKit 因此跳过 Genie。必须在 addToolBar 之前调用。
+        if hasattr(self, "setUnifiedTitleAndToolBarOnMac"):
+            self.setUnifiedTitleAndToolBarOnMac(False)
+
         self._setup_ui()
         self._setup_toolbar()
         self._setup_shortcuts()
