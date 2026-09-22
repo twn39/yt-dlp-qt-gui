@@ -8,9 +8,12 @@ import os
 import queue
 import sqlite3
 import sys
+import tempfile
 import threading
+import traceback
 from typing import Any, Callable, Optional
 
+from .config import _config_dir
 from .models import DownloadTask
 
 
@@ -27,14 +30,13 @@ class DbTask:
 class Database:
     def __init__(self, db_path: Optional[str] = None) -> None:
         if db_path is None:
-            config_dir = os.path.expanduser("~/.yt-dlp-gui")
-            os.makedirs(config_dir, exist_ok=True)
-            self.db_path = os.path.join(config_dir, "downloads.db")
+            # 统一走 _config_dir() 的可写目录探测，避免 ~/.yt-dlp-gui 不可写导致的闪退
+            self.db_path = os.path.join(_config_dir(), "downloads.db")
         else:
             self.db_path = db_path
 
         # 任务队列，用于传递 DbTask 或用于停止的 None (毒丸)
-        self._queue = queue.Queue[Optional[DbTask]]()
+        self._queue: queue.Queue[Optional[DbTask]] = queue.Queue()
         self._closed = False
         self._close_lock = threading.Lock()
 
@@ -44,15 +46,53 @@ class Database:
 
         self._init_db()
 
-    def _db_worker(self) -> None:
-        """后台数据库工作线程的主循环，保证所有 SQL 操作都在单线程内顺序执行"""
-        # 在此后台线程中开启连接，确保 check_same_thread 安全
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+    def _open_sqlite(self) -> sqlite3.Connection:
+        """尝试在 db_path 上打开 sqlite，若失败则 fallback 到 tempfile，最后兜底 :memory:
 
-        # WAL 模式与同步级别优化
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
+        不能失败——daemon 线程崩了主程序白屏/闪退且用户看不到 traceback。
+        """
+        candidates = [self.db_path]
+        # 打包环境多放一个 temp 目录候选（self.db_path 可能指向不可写的用户目录）
+        if getattr(sys, "frozen", False):
+            candidates.append(os.path.join(tempfile.gettempdir(), "yt-dlp-gui-downloads.db"))
+
+        last_err: Optional[BaseException] = None
+        for path in candidates:
+            try:
+                os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+                conn = sqlite3.connect(path)
+                # 写一个 SELECT 探活
+                conn.execute("SELECT 1")
+                conn.row_factory = sqlite3.Row
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA synchronous=NORMAL")
+                # 成功时回写实际生效的 db_path，便于日志/排查
+                self.db_path = path
+                return conn
+            except (sqlite3.Error, OSError) as e:
+                last_err = e
+                print(f"[Database] 打开 {path} 失败: {e}", file=sys.stderr)
+                continue
+
+        # 极端兜底：内存库（不持久化但保证程序不崩）
+        print(f"[Database] 所有持久化路径均失败 ({last_err})，降级为内存库", file=sys.stderr)
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _db_worker(self) -> None:
+        """后台数据库工作线程的主循环，保证所有 SQL 操作都在单线程内顺序执行。
+
+        关键：这里必须自 try/except 包住整个主循环——daemon 线程抛异常 Python
+        不会把异常冒泡到主线程，只会静默"消失"，用户看到的就是"闪退/白屏"。
+        """
+        try:
+            conn = self._open_sqlite()
+        except Exception as e:
+            print(f"[Database] 致命: 无法初始化 sqlite 连接, db_path={self.db_path}", file=sys.stderr)
+            traceback.print_exc()
+            # 丢一个毒丸让调用方收知道崩了
+            return
 
         while True:
             task = self._queue.get()
@@ -71,10 +111,14 @@ class Database:
                 else:
                     # 异步任务出错时，记录日志到 stderr 以免程序崩溃
                     print(f"Database background write error: {e}", file=sys.stderr)
+                    traceback.print_exc()
             finally:
                 self._queue.task_done()
 
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     def _execute_sync(self, func: Callable[[sqlite3.Connection], Any]) -> Any:
         """同步执行任务：向队列投递任务并阻塞等待后台线程返回结果"""
