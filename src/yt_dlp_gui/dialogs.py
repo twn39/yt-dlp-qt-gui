@@ -339,7 +339,7 @@ class AddTaskDialog(QDialog):
         self.url_input.setPlaceholderText("粘贴视频链接...")
         self.url_input.returnPressed.connect(self._on_parse_clicked)
         url_row.addWidget(self.url_input, 1)
-        self.parse_btn = QPushButton(qta.icon("fa5s.list-alt"), "  解析格式")
+        self.parse_btn = QPushButton(qta.icon("fa5s.list-alt", color="#FFFFFF"), "  解析格式")
         self.parse_btn.setMinimumWidth(120)
         self.parse_btn.clicked.connect(self._on_parse_clicked)
         url_row.addWidget(self.parse_btn)
@@ -500,7 +500,8 @@ class AddTaskDialog(QDialog):
     @Slot(dict)
     def _on_parse_success(self, info: dict[str, Any]) -> None:
         self.parse_btn.setEnabled(True)
-        self.parse_btn.setText("解析格式")
+        self.parse_btn.setText("  解析格式")
+        self.parse_btn.setIcon(qta.icon("fa5s.list-alt", color="#FFFFFF"))
         self.parse_progress.setVisible(False)
 
         if not info.get("formats"):
@@ -534,7 +535,8 @@ class AddTaskDialog(QDialog):
     @Slot(str)
     def _on_parse_error(self, err: str) -> None:
         self.parse_btn.setEnabled(True)
-        self.parse_btn.setText("解析格式")
+        self.parse_btn.setText("  解析格式")
+        self.parse_btn.setIcon(qta.icon("fa5s.list-alt", color="#FFFFFF"))
         self.parse_progress.setVisible(False)
         QMessageBox.critical(self, "解析失败", f"无法获取视频信息：\n\n{err}")
 
@@ -632,7 +634,15 @@ class AboutDialog(QDialog):
         layout.addWidget(name_label)
 
         # 副标题 + 版本
-        subtitle_label = QLabel(f"v{version}  ·  现代化视频下载管理器")
+        try:
+            import yt_dlp
+
+            yt_version = getattr(getattr(yt_dlp, "version", None), "__version__", "")
+        except Exception:
+            yt_version = ""
+
+        ver_info = f"v{version}" + (f" (yt-dlp {yt_version})" if yt_version else "")
+        subtitle_label = QLabel(f"{ver_info}  ·  现代化视频下载管理器")
         subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle_label.setStyleSheet("font-size: 9pt; color: #888888;")
         layout.addWidget(subtitle_label)

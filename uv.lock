@@ -724,7 +724,7 @@ requires-dist = [
     { name = "curl-cffi", specifier = ">=0.15.0" },
     { name = "pyside6", specifier = ">=6.10.1" },
     { name = "qtawesome", specifier = ">=1.4.1" },
-    { name = "yt-dlp", specifier = ">=2026.3.17" },
+    { name = "yt-dlp", specifier = ">=2026.8.19" },
 ]
 
 [package.metadata.requires-dev]

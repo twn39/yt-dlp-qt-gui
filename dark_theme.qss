@@ -205,3 +205,27 @@ QTextEdit:hover,
 QComboBox:hover {
     border: 1px solid #383838;
 }
+
+/* 下拉列表弹窗 (QComboBox Popup) */
+QComboBox QAbstractItemView {
+    background-color: #1E1E1E;
+    border: 1px solid #383838;
+    border-radius: 4px;
+    padding: 2px;
+    color: #FFFFFF;
+    selection-background-color: #4A90E2;
+    selection-color: #FFFFFF;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    min-height: 24px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    color: #DDDDDD;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #4A90E2;
+    color: #FFFFFF;
+}

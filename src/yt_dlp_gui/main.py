@@ -681,6 +681,7 @@ class MainWindow(QMainWindow):
 
 def run_gui():
     app = QApplication(sys.argv)
+    app.setStyle("Fusion")
     db = Database()
     scheduler = DownloadScheduler(db)
 

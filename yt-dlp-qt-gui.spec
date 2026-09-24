@@ -5,8 +5,10 @@ PyInstaller 配置文件 - macOS 极致精简版
 """
 
 import importlib.metadata
-import sys
 import os
+import sys
+
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 # 从已安装的包元数据读取版本（与 pyproject.toml 保持同步）
 try:
@@ -137,7 +139,7 @@ a = Analysis(
     datas=[
         ('dark_theme.qss', '.'),  # 样式文件
         ('src/yt_dlp_gui/resources/logo.jpg', 'src/yt_dlp_gui/resources'),  # 保持原始路径结构
-    ],
+    ] + collect_data_files('curl_cffi'),
     hiddenimports=[
         'PySide6.QtCore',
         'PySide6.QtGui',
@@ -148,7 +150,7 @@ a = Analysis(
         'yt_dlp.extractor',
         'yt_dlp.utils',
         'click',
-        'curl_cffi',
+        *collect_submodules('curl_cffi'),
         # yt-dlp 可能动态加载的模块
         'yt_dlp.networking',
         'yt_dlp.networking.common',
