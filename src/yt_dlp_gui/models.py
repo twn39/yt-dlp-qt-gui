@@ -6,6 +6,20 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelInd
 from PySide6.QtGui import QIcon
 
 
+class DownloadStatus:
+    """下载任务状态常量"""
+
+    PENDING = "pending"
+    QUEUED = "queued"
+    DOWNLOADING = "downloading"
+    MERGING = "merging"
+    FINISHED = "finished"
+    ERROR = "error"
+    CANCELLED = "cancelled"
+
+    ALL_STATUSES = frozenset({PENDING, QUEUED, DOWNLOADING, MERGING, FINISHED, ERROR, CANCELLED})
+
+
 @dataclass
 class DownloadTask:
     url: str
@@ -13,7 +27,7 @@ class DownloadTask:
     format_preset: str
     id: Optional[int] = None
     title: Optional[str] = "正在解析..."
-    status: str = "pending"
+    status: str = DownloadStatus.PENDING
     progress: int = 0
     speed: Optional[str] = "--"
     eta: Optional[str] = "--"
@@ -27,6 +41,7 @@ class DownloadTask:
     impersonate: Optional[str] = None
     no_cookies: bool = False
     cookie_browser: Optional[str] = None  # 从本机浏览器导入 cookies：chrome / edge / None
+    ratelimit: Optional[str] = None  # 下载限速 (例如: "2M", "500K")
     created_at: Optional[str] = None
 
     @classmethod
@@ -64,6 +79,7 @@ class DownloadTask:
             impersonate=data.get("impersonate") or None,
             no_cookies=bool(data.get("no_cookies", False)),
             cookie_browser=data.get("cookie_browser") or None,
+            ratelimit=data.get("ratelimit") or None,
             created_at=data.get("created_at"),
         )
 
@@ -92,15 +108,15 @@ class TaskTableModel(QAbstractTableModel):
         return self._icon_cache[key]
 
     def _get_status_icon(self, status: str) -> QIcon:
-        if status == "downloading":
+        if status == DownloadStatus.DOWNLOADING:
             return self._get_cached_icon("fa5s.download", "#FFFFFF")
-        elif status == "finished":
+        elif status == DownloadStatus.FINISHED:
             return self._get_cached_icon("fa5s.check-circle", "#4CAF50")
-        elif status == "error":
+        elif status == DownloadStatus.ERROR:
             return self._get_cached_icon("fa5s.exclamation-circle", "#FFFFFF")
-        elif status == "merging":
+        elif status == DownloadStatus.MERGING:
             return self._get_cached_icon("fa5s.layer-group", "#FFFFFF")
-        elif status == "cancelled":
+        elif status == DownloadStatus.CANCELLED:
             return self._get_cached_icon("fa5s.stop-circle", "#FFFFFF")
         return self._get_cached_icon("fa5s.clock", "#FFFFFF")
 

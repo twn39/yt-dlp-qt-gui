@@ -55,6 +55,8 @@ def test_scheduler_concurrency_limit(mock_run, temp_db):
 @patch("yt_dlp_gui.scheduler.DownloadScheduler._run_task_thread")
 def test_scheduler_queue_progression(mock_run, temp_db):
     """测试排队任务的流转，当前任务完成后队列中的下一个任务自动启动"""
+    from PySide6.QtCore import QCoreApplication
+
     scheduler = DownloadScheduler(temp_db, max_concurrent_downloads=1)
 
     task1 = DownloadTask(url="https://example.com/v1", save_path=".", format_preset="best")
@@ -63,13 +65,77 @@ def test_scheduler_queue_progression(mock_run, temp_db):
     tid1 = scheduler.add_task(task1)
     tid2 = scheduler.add_task(task2)
 
-    # 模拟任务 1 线程结束清理
+    # 模拟任务 1 线程结束清理（由 QTimer.singleShot 异步派发下一次调度）
     scheduler._cleanup_thread(tid1)
+    app = QCoreApplication.instance()
+    if app is not None:
+        app.processEvents()
 
     # 任务 2 应当被自动拉起
     assert tid2 in scheduler._active_task_ids
     assert len(scheduler._waiting_queue) == 0
     assert mock_run.call_count == 2
+
+
+@patch("yt_dlp_gui.scheduler.DownloadScheduler._run_task_thread")
+def test_scheduler_slot_filling_multi_concurrency(mock_run, temp_db):
+    """测试槽位饱和填充引擎：当有多个空闲槽位时，一次调度应填满所有可用并发槽位"""
+    from PySide6.QtCore import QCoreApplication
+
+    # 最大并发设为 3
+    scheduler = DownloadScheduler(temp_db, max_concurrent_downloads=3)
+
+    tasks = [
+        DownloadTask(url=f"https://example.com/v{i}", save_path=".", format_preset="best")
+        for i in range(5)
+    ]
+    tids = [scheduler.add_task(t) for t in tasks]
+
+    # 前 3 个任务应该直接并发启动，后 2 个进入等待队列
+    assert len(scheduler._active_task_ids) == 3
+    assert set(tids[:3]) == scheduler._active_task_ids
+    assert scheduler._waiting_queue == tids[3:]
+    assert mock_run.call_count == 3
+
+    # 当任务 1 结束并清理时，队列中的第 4 个任务应立即被填补
+    scheduler._cleanup_thread(tids[0])
+    app = QCoreApplication.instance()
+    if app is not None:
+        app.processEvents()
+
+    assert len(scheduler._active_task_ids) == 3
+    assert tids[3] in scheduler._active_task_ids
+    assert scheduler._waiting_queue == [tids[4]]
+    assert mock_run.call_count == 4
+
+
+@patch("yt_dlp_gui.scheduler.DownloadScheduler._run_task_thread")
+def test_scheduler_dynamic_concurrency_scaling(mock_run, temp_db):
+    """测试动态并发调整：增大并发数时自动唤醒排队任务"""
+    scheduler = DownloadScheduler(temp_db, max_concurrent_downloads=1)
+
+    task1 = DownloadTask(url="https://example.com/v1", save_path=".", format_preset="best")
+    task2 = DownloadTask(url="https://example.com/v2", save_path=".", format_preset="best")
+    task3 = DownloadTask(url="https://example.com/v3", save_path=".", format_preset="best")
+
+    tid1 = scheduler.add_task(task1)
+    tid2 = scheduler.add_task(task2)
+    tid3 = scheduler.add_task(task3)
+
+    assert tid1 in scheduler._active_task_ids
+    assert len(scheduler._active_task_ids) == 1
+    assert scheduler._waiting_queue == [tid2, tid3]
+    assert mock_run.call_count == 1
+
+    # 动态将并发数从 1 提升至 3，等待队列中的 2 个任务应立即被拉起启动
+    scheduler.set_max_concurrent_downloads(3)
+    assert len(scheduler._active_task_ids) == 3
+    assert len(scheduler._waiting_queue) == 0
+    assert mock_run.call_count == 3
+
+    # 测试非法并发数异常保护
+    with pytest.raises(ValueError, match="最大并发数不能小于 1"):
+        scheduler.set_max_concurrent_downloads(0)
 
 
 @patch("yt_dlp_gui.scheduler.DownloadScheduler._run_task_thread")
@@ -376,3 +442,126 @@ def test_scheduler_worker_finished_failure_and_cancel(mock_run, temp_db, qtbot):
     assert temp_db.get_task(task3_id).status == "cancelled"
 
     scheduler.shutdown()
+
+
+def test_scheduler_state_machine_transition_guards(temp_db):
+    """测试状态机守卫：阻断非法跃迁，放行合法跃迁"""
+    from yt_dlp_gui.models import DownloadStatus
+
+    scheduler = DownloadScheduler(temp_db, max_concurrent_downloads=2)
+
+    # 1. 初始为 pending
+    task = DownloadTask(url="http://guard.com", save_path=".", format_preset="best")
+    tid = temp_db.add_task(task)
+
+    # pending -> queued (合法)
+    assert scheduler._transition_status(tid, DownloadStatus.QUEUED) is True
+    assert temp_db.get_task(tid).status == DownloadStatus.QUEUED
+
+    # queued -> downloading (合法)
+    assert scheduler._transition_status(tid, DownloadStatus.DOWNLOADING) is True
+    assert temp_db.get_task(tid).status == DownloadStatus.DOWNLOADING
+
+    # downloading -> finished (合法)
+    assert scheduler._transition_status(tid, DownloadStatus.FINISHED) is True
+    assert temp_db.get_task(tid).status == DownloadStatus.FINISHED
+
+    # finished -> merging (非法跃迁，已完成任务不可直接变更为合并中)
+    assert scheduler._transition_status(tid, DownloadStatus.MERGING) is False
+    # 状态保持 finished
+    assert temp_db.get_task(tid).status == DownloadStatus.FINISHED
+
+    # finished -> queued (合法，用户重试)
+    assert scheduler._transition_status(tid, DownloadStatus.QUEUED) is True
+    assert temp_db.get_task(tid).status == DownloadStatus.QUEUED
+
+    # 针对不存在的 task_id，转移应安全返回 False
+    assert scheduler._transition_status(99999, DownloadStatus.DOWNLOADING) is False
+
+
+def test_scheduler_query_helpers(temp_db):
+    """测试 is_task_running, is_task_queued, is_task_active 状态查询 Facade"""
+    from unittest.mock import MagicMock
+
+    scheduler = DownloadScheduler(temp_db, max_concurrent_downloads=2)
+
+    task1_id = 101
+    task2_id = 102
+    task3_id = 103
+
+    # task1 模拟处于线程运行中
+    scheduler.threads[task1_id] = MagicMock()
+    # task2 处于等待队列
+    scheduler._waiting_queue.append(task2_id)
+
+    # 验证 is_task_running
+    assert scheduler.is_task_running(task1_id) is True
+    assert scheduler.is_task_running(task2_id) is False
+    assert scheduler.is_task_running(task3_id) is False
+
+    # 验证 is_task_queued
+    assert scheduler.is_task_queued(task1_id) is False
+    assert scheduler.is_task_queued(task2_id) is True
+    assert scheduler.is_task_queued(task3_id) is False
+
+    # 验证 is_task_active (运行中或排队中)
+    assert scheduler.is_task_active(task1_id) is True
+    assert scheduler.is_task_active(task2_id) is True
+    assert scheduler.is_task_active(task3_id) is False
+
+
+def test_scheduler_start_all_and_stop_all(temp_db):
+    """测试全部开始 (start_all_tasks) 与全部停止 (stop_all_tasks)"""
+    from unittest.mock import MagicMock
+
+    scheduler = DownloadScheduler(temp_db, max_concurrent_downloads=2)
+
+    task1 = DownloadTask(url="http://1.com", save_path=".", format_preset="best")
+    task2 = DownloadTask(url="http://2.com", save_path=".", format_preset="best")
+    task3 = DownloadTask(url="http://3.com", save_path=".", format_preset="best")
+
+    temp_db.add_task(task1)
+    temp_db.add_task(task2)
+    temp_db.add_task(task3)
+
+    # 1. 模拟 start_all_tasks
+    mock_run = MagicMock()
+    scheduler._run_task_thread = mock_run
+
+    scheduler.start_all_tasks()
+
+    # 最大并发是 2，所以应该 2 个运行，1 个排队
+    assert len(scheduler._active_task_ids) == 2
+    assert len(scheduler._waiting_queue) == 1
+    assert mock_run.call_count == 2
+
+    # 2. 模拟 stop_all_tasks
+    # 给运行中任务注入 mock worker
+    from typing import cast
+
+    from yt_dlp_gui.worker import DownloadWorker
+
+    worker_mocks = {tid: MagicMock() for tid in scheduler._active_task_ids}
+    scheduler.workers = cast(dict[int, DownloadWorker], worker_mocks)
+
+    scheduler.stop_all_tasks()
+
+    # 排队队列应已被清空
+    assert len(scheduler._waiting_queue) == 0
+    # 所有运行中 worker 均被调用 cancel
+    for w in worker_mocks.values():
+        w.cancel.assert_called_once()
+
+
+def test_task_ratelimit_db(temp_db):
+    """测试任务的限速属性在数据库中的持久化和读取"""
+    task = DownloadTask(
+        url="https://example.com/ratelimit",
+        save_path=".",
+        format_preset="best",
+        ratelimit="5M",
+    )
+    tid = temp_db.add_task(task)
+    retrieved = temp_db.get_task(tid)
+    assert retrieved is not None
+    assert retrieved.ratelimit == "5M"

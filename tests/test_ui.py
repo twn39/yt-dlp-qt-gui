@@ -640,3 +640,77 @@ def test_format_preview_dialog(qtbot):
 
     assert dialog.get_format_spec() == "137+140"
     assert "1920x1080" in dialog.get_human_label()
+
+
+def test_mainwindow_start_all_and_stop_all(app_window):
+    """测试主窗口全部开始与全部停止代理调用"""
+    from unittest.mock import MagicMock
+
+    mock_start = MagicMock()
+    mock_stop = MagicMock()
+    app_window.scheduler.start_all_tasks = mock_start
+    app_window.scheduler.stop_all_tasks = mock_stop
+
+    app_window._start_all_tasks()
+    mock_start.assert_called_once()
+
+    app_window._stop_all_tasks()
+    mock_stop.assert_called_once()
+
+
+def test_mainwindow_double_click_actions(app_window):
+    """测试主窗口双击表格行触发的对应动作"""
+    from unittest.mock import MagicMock
+
+    from yt_dlp_gui.models import DownloadStatus
+
+    task1 = DownloadTask(
+        id=101,
+        url="http://x.com/1",
+        save_path=".",
+        format_preset="best",
+        status=DownloadStatus.FINISHED,
+    )
+    task2 = DownloadTask(
+        id=102,
+        url="http://x.com/2",
+        save_path=".",
+        format_preset="best",
+        status=DownloadStatus.ERROR,
+    )
+    task3 = DownloadTask(
+        id=103,
+        url="http://x.com/3",
+        save_path=".",
+        format_preset="best",
+        status=DownloadStatus.DOWNLOADING,
+    )
+
+    app_window.table_model.set_tasks([task1, task2, task3])
+
+    # Mock scheduler.get_task
+    task_map = {101: task1, 102: task2, 103: task3}
+    app_window.scheduler.get_task = MagicMock(side_effect=lambda tid: task_map.get(tid))
+
+    # Mock 各分发动作
+    mock_open_folder = MagicMock()
+    mock_view_log = MagicMock()
+    mock_stop = MagicMock()
+    app_window._open_task_folder = mock_open_folder
+    app_window._view_selected_task_log = mock_view_log
+    app_window.scheduler.stop_task = mock_stop
+
+    # 1. 双击第 0 行 (finished) -> 打开文件夹
+    idx0 = app_window.proxy_model.index(0, 0)
+    app_window._on_table_double_clicked(idx0)
+    mock_open_folder.assert_called_once()
+
+    # 2. 双击第 1 行 (error) -> 打开日志
+    idx1 = app_window.proxy_model.index(1, 0)
+    app_window._on_table_double_clicked(idx1)
+    mock_view_log.assert_called_once()
+
+    # 3. 双击第 2 行 (downloading) -> 停止任务
+    idx2 = app_window.proxy_model.index(2, 0)
+    app_window._on_table_double_clicked(idx2)
+    mock_stop.assert_called_once_with(103)

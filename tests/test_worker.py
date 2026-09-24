@@ -190,3 +190,21 @@ def test_worker_run_cookie_browser(mock_ytdl, qtbot):
     args, kwargs = mock_ytdl.call_args
     opts = args[0]
     assert opts["cookiesfrombrowser"] == ("chrome",)
+
+
+@patch("yt_dlp.YoutubeDL")
+def test_worker_run_ratelimit(mock_ytdl, qtbot):
+    """Test worker.run with ratelimit option."""
+    worker = DownloadWorker(
+        task_id=3,
+        url="url",
+        download_path=".",
+        ratelimit="2M",
+    )
+
+    with qtbot.waitSignal(worker.finished, timeout=2000):
+        worker.run()
+
+    args, _ = mock_ytdl.call_args
+    opts = args[0]
+    assert opts["ratelimit"] == "2M"

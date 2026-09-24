@@ -32,6 +32,7 @@ class DownloadWorker(QObject):
         impersonate: str | None = None,
         no_cookies: bool = False,
         cookie_browser: str | None = None,
+        ratelimit: str | None = None,
     ) -> None:
         """
         初始化下载工作器
@@ -57,6 +58,7 @@ class DownloadWorker(QObject):
         self.impersonate = impersonate
         self.no_cookies = no_cookies
         self.cookie_browser = cookie_browser
+        self.ratelimit = ratelimit
         self._is_cancelled = False
         self._log_file = None
 
@@ -160,6 +162,10 @@ class DownloadWorker(QObject):
                 # macOS 上 Chromium 系（chrome / edge / brave / arc）最稳，Safari 暂不支持
                 self._write_log(f"从浏览器导入 Cookies: {self.cookie_browser}")
                 base_options["cookiesfrombrowser"] = (self.cookie_browser,)
+
+            if self.ratelimit:
+                self._write_log(f"设置下载限速: {self.ratelimit}")
+                base_options["ratelimit"] = self.ratelimit
 
             base_options.update(self.ydl_opts)
 

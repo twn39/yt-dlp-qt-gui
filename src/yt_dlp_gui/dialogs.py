@@ -380,8 +380,10 @@ class AddTaskDialog(QDialog):
         options_layout.addWidget(QLabel("浏览器伪装:"), 1, 2)
         options_layout.addWidget(self.impersonate_combo, 1, 3)
 
-        self.write_subs_checkbox = Switch("下载字幕")
-        options_layout.addWidget(self.write_subs_checkbox, 2, 0, 1, 2)
+        self.ratelimit_input = QLineEdit()
+        self.ratelimit_input.setPlaceholderText("例如: 2M, 500K")
+        options_layout.addWidget(QLabel("下载限速:"), 2, 0)
+        options_layout.addWidget(self.ratelimit_input, 2, 1)
 
         # 浏览器 Cookies：从本机 Chrome / Edge 导入（Safari 暂不支持）
         self.cookie_browser_combo = QComboBox()
@@ -389,10 +391,13 @@ class AddTaskDialog(QDialog):
         options_layout.addWidget(QLabel("导入 Cookies:"), 2, 2)
         options_layout.addWidget(self.cookie_browser_combo, 2, 3)
 
+        self.write_subs_checkbox = Switch("下载字幕")
+        options_layout.addWidget(self.write_subs_checkbox, 3, 0, 1, 2)
+
         # 提示：选了浏览器时显示简要说明
         tip_label = QLabel("选浏览器 → 自动从本机 cookies 库读登录态；不导入 → 匿名抓取")
         tip_label.setStyleSheet("color: #AAA; font-size: 11px;")
-        options_layout.addWidget(tip_label, 3, 0, 1, 4)
+        options_layout.addWidget(tip_label, 4, 0, 1, 4)
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
 
@@ -587,6 +592,7 @@ class AddTaskDialog(QDialog):
             else None,
             impersonate=impersonate_val,
             cookie_browser=cookie_browser_val,
+            ratelimit=self.ratelimit_input.text().strip() or None,
         )
 
 

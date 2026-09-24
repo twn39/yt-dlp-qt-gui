@@ -50,7 +50,7 @@ from PySide6.QtWidgets import (
 from .config import STYLESHEET_FILE, get_task_log_path
 from .database import Database
 from .dialogs import DialogManager
-from .models import DownloadTask, TaskTableModel
+from .models import DownloadStatus, DownloadTask, TaskTableModel
 from .scheduler import DownloadScheduler
 from .utils import clean_ansi, format_eta, format_speed
 
@@ -269,6 +269,7 @@ class MainWindow(QMainWindow):
 
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
+        self.table.doubleClicked.connect(self._on_table_double_clicked)
 
         panel_layout.addWidget(self.table)
         main_layout.addWidget(self.table_panel)
@@ -299,6 +300,14 @@ class MainWindow(QMainWindow):
         stop_action = QAction(qta.icon("fa5s.stop-circle", color="#FFFFFF"), "停止", self)
         stop_action.triggered.connect(self._stop_selected_task)
         toolbar.addAction(stop_action)
+
+        start_all_action = QAction(qta.icon("fa5s.forward", color="#FFFFFF"), "全部开始", self)
+        start_all_action.triggered.connect(self._start_all_tasks)
+        toolbar.addAction(start_all_action)
+
+        stop_all_action = QAction(qta.icon("fa5s.pause", color="#FFFFFF"), "全部停止", self)
+        stop_all_action.triggered.connect(self._stop_all_tasks)
+        toolbar.addAction(stop_all_action)
 
         toolbar.addSeparator()
 
@@ -388,6 +397,10 @@ class MainWindow(QMainWindow):
         menu.addSeparator()
         start_action = menu.addAction(qta.icon("fa5s.play", color="#FFFFFF"), "开始 / 重试")
         stop_action = menu.addAction(qta.icon("fa5s.stop", color="#FFFFFF"), "停止")
+        menu.addSeparator()
+        start_all_action = menu.addAction(qta.icon("fa5s.forward", color="#FFFFFF"), "全部开始")
+        stop_all_action = menu.addAction(qta.icon("fa5s.pause", color="#FFFFFF"), "全部停止")
+        menu.addSeparator()
         delete_action = menu.addAction(qta.icon("fa5s.trash-alt", color="#FFFFFF"), "删除任务")
 
         action = menu.exec(self.table.viewport().mapToGlobal(pos))
@@ -399,8 +412,46 @@ class MainWindow(QMainWindow):
             self._start_selected_task()
         elif action == stop_action:
             self._stop_selected_task()
+        elif action == start_all_action:
+            self._start_all_tasks()
+        elif action == stop_all_action:
+            self._stop_all_tasks()
         elif action == delete_action:
             self._delete_selected_task()
+
+    def _start_all_tasks(self) -> None:
+        """一键开始所有未完成的任务"""
+        self.scheduler.start_all_tasks()
+
+    def _stop_all_tasks(self) -> None:
+        """一键停止所有正在运行或排队中的任务"""
+        self.scheduler.stop_all_tasks()
+
+    def _on_table_double_clicked(self, index: QModelIndex | QPersistentModelIndex) -> None:
+        """表格行双击交互：根据任务状态智能执行最符合预期的动作"""
+        if not index.isValid():
+            return
+        row = index.row()
+        task_id = self._get_task_id_from_row(row)
+        if not task_id:
+            return
+
+        task = self.scheduler.get_task(task_id)
+        if not task:
+            return
+
+        # 1. 已完成任务：直接打开文件所在文件夹
+        if task.status == DownloadStatus.FINISHED:
+            self._open_task_folder()
+        # 2. 报错或已取消任务：直接打开日志窗口排错
+        elif task.status in (DownloadStatus.ERROR, DownloadStatus.CANCELLED):
+            self._view_selected_task_log()
+        # 3. 运行中或排队中任务：暂停/停止
+        elif task.status in (DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED):
+            self.scheduler.stop_task(task_id)
+        # 4. 待处理任务：开始下载
+        elif task.status == DownloadStatus.PENDING:
+            self.scheduler.start_task(task_id)
 
     def _open_task_folder(self):
         index = self.table.currentIndex()
@@ -491,7 +542,7 @@ class MainWindow(QMainWindow):
         for idx in indices:
             tid = self._get_task_id_from_row(idx.row())
             if tid:
-                if tid in self.scheduler.threads:
+                if self.scheduler.is_task_running(tid):
                     self.scheduler.stop_task(tid)
                 else:
                     self.scheduler.start_task(tid)
@@ -528,9 +579,9 @@ class MainWindow(QMainWindow):
         tids = [self._get_task_id_from_row(idx.row()) for idx in indices]
         tids = [tid for tid in tids if tid is not None]
 
-        # 分类：静止任务 vs 运行中任务
-        running_tids = [tid for tid in tids if tid in self.scheduler.threads]
-        idle_tids = [tid for tid in tids if tid not in self.scheduler.threads]
+        # 分类：静止任务 vs 运行中任务（通过 Facade 接口判断，不访问内部 threads）
+        running_tids = [tid for tid in tids if self.scheduler.is_task_running(tid)]
+        idle_tids = [tid for tid in tids if not self.scheduler.is_task_running(tid)]
 
         if running_tids:
             msg = (
@@ -561,11 +612,11 @@ class MainWindow(QMainWindow):
 
     def _on_scheduler_status_changed(self, task_id: int, status: str) -> None:
         updates = {"status": status}
-        if status == "finished":
+        if status == DownloadStatus.FINISHED:
             updates.update({"progress": 100, "speed": "--", "eta": "--"})
-        elif status in ("cancelled", "error"):
+        elif status in (DownloadStatus.CANCELLED, DownloadStatus.ERROR):
             updates.update({"progress": 0, "speed": "--", "eta": "--"})
-        elif status in ("downloading", "queued"):
+        elif status in (DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED):
             updates.update({"speed": "--", "eta": "--"})
         self._update_table_row(task_id, updates)
 
