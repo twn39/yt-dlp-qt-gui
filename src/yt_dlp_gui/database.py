@@ -88,8 +88,10 @@ class Database:
         """
         try:
             conn = self._open_sqlite()
-        except Exception as e:
-            print(f"[Database] 致命: 无法初始化 sqlite 连接, db_path={self.db_path}", file=sys.stderr)
+        except Exception:
+            print(
+                f"[Database] 致命: 无法初始化 sqlite 连接, db_path={self.db_path}", file=sys.stderr
+            )
             traceback.print_exc()
             # 丢一个毒丸让调用方收知道崩了
             return
@@ -190,8 +192,8 @@ class Database:
                     url, title, status, save_path, format_preset, proxy,
                     concurrent_fragments, write_subs, download_playlist,
                     playlist_items, playlist_random, max_downloads,
-                    impersonate, cookie_browser
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    impersonate, no_cookies, cookie_browser
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             params = (
                 task.url,
@@ -207,6 +209,7 @@ class Database:
                 task.playlist_random,
                 task.max_downloads,
                 task.impersonate,
+                task.no_cookies,
                 task.cookie_browser,
             )
             cursor = conn.execute(query, params)

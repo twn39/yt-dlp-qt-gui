@@ -172,3 +172,21 @@ def test_worker_run_impersonate_and_no_cookies(mock_ytdl, qtbot):
     else:
         assert impersonate_opt == "chrome"
     assert opts["no_cookies"] is True
+
+
+@patch("yt_dlp.YoutubeDL")
+def test_worker_run_cookie_browser(mock_ytdl, qtbot):
+    """Test worker.run with cookie_browser option."""
+    worker = DownloadWorker(
+        task_id=2,
+        url="url",
+        download_path=".",
+        cookie_browser="chrome",
+    )
+
+    with qtbot.waitSignal(worker.finished, timeout=2000):
+        worker.run()
+
+    args, kwargs = mock_ytdl.call_args
+    opts = args[0]
+    assert opts["cookiesfrombrowser"] == ("chrome",)

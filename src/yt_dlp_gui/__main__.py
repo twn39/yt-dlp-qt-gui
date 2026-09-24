@@ -66,7 +66,6 @@ try:
 
         os.environ["PATH"] = os.pathsep.join(paths)
 
-
     # ✅ 在 import PySide6 / yt_dlp_gui 之前立即调用，确保 Qt 初始化时 PATH 已正确
     setup_environment()
     _write_startup_log("setup_environment() 完成")

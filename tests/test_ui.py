@@ -191,10 +191,14 @@ def test_add_task_dialog_fields(qtbot):
     # 模拟开启字幕
     dialog.write_subs_checkbox.setChecked(True)
 
+    # 模拟选择 Chrome 导入 Cookies
+    dialog.cookie_browser_combo.setCurrentText("Chrome")
+
     task_data = dialog.get_task_data()
     assert task_data.url == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     assert task_data.format_preset == "bestvideo[height<=1080]+bestaudio/bestvideo+bestaudio/best"
     assert task_data.write_subs is True
+    assert task_data.cookie_browser == "chrome"
 
 
 def test_about_dialog_version_label(qtbot):
@@ -591,3 +595,48 @@ def test_scheduler_signals_and_close(app_window):
     event = QCloseEvent()
     app_window.closeEvent(event)
     dialog_mock.close.assert_called_once()
+
+
+def test_format_preview_dialog(qtbot):
+    """测试 FormatPreviewDialog 构建和选轨逻辑"""
+    from yt_dlp_gui.dialogs import FormatPreviewDialog, _format_filesize
+
+    assert _format_filesize(None) == "—"
+    assert "KB" in _format_filesize(2048)
+    assert "MB" in _format_filesize(1048576)
+
+    info = {
+        "title": "Test Video",
+        "webpage_url": "https://example.com/test",
+        "formats": [
+            {
+                "format_id": "137",
+                "ext": "mp4",
+                "resolution": "1920x1080",
+                "vcodec": "avc1",
+                "acodec": "none",
+                "filesize": 10485760,
+                "fps": 30,
+            },
+            {
+                "format_id": "140",
+                "ext": "m4a",
+                "resolution": "audio only",
+                "vcodec": "none",
+                "acodec": "mp4a",
+                "filesize": 1048576,
+                "abr": 128,
+            },
+        ],
+    }
+
+    dialog = FormatPreviewDialog(info)
+    qtbot.addWidget(dialog)
+
+    # 模拟选中第一行视频和第一行音频
+    dialog.video_table.setCurrentCell(0, 0)
+    dialog.audio_table.setCurrentCell(0, 0)
+    dialog._on_ok()
+
+    assert dialog.get_format_spec() == "137+140"
+    assert "1920x1080" in dialog.get_human_label()

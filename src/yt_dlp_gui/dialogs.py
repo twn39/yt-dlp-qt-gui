@@ -2,7 +2,7 @@ import os
 from typing import Any, Callable, Optional
 
 import qtawesome as qta
-from PySide6.QtCore import QObject, QStandardPaths, QThread, Qt, QUrl, Signal, Slot
+from PySide6.QtCore import QObject, QStandardPaths, Qt, QThread, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -69,11 +69,12 @@ class LogDialog(QDialog):
 class FormatPreviewWorker(QObject):
     """后台线程：调用 yt-dlp extract_info 解析可用格式"""
 
-    finished = Signal(dict)     # info_dict 或 None（成功）
-    error = Signal(str)         # 失败原因
+    finished = Signal(dict)  # info_dict 或 None（成功）
+    error = Signal(str)  # 失败原因
 
-    def __init__(self, url: str, proxy: str | None, impersonate: str | None,
-                 cookie_browser: str | None) -> None:
+    def __init__(
+        self, url: str, proxy: str | None, impersonate: str | None, cookie_browser: str | None
+    ) -> None:
         super().__init__()
         self.url = url
         self.proxy = proxy
@@ -146,7 +147,9 @@ class FormatPreviewDialog(QDialog):
     def _build_ui(self, title: str, info: dict[str, Any]) -> None:
         layout = QVBoxLayout(self)
 
-        meta = QLabel(f"<b>{title}</b>  ·  <span style='color:#888'>{info.get('webpage_url', '')}</span>")
+        meta = QLabel(
+            f"<b>{title}</b>  ·  <span style='color:#888'>{info.get('webpage_url', '')}</span>"
+        )
         meta.setWordWrap(True)
         layout.addWidget(meta)
 
@@ -201,7 +204,11 @@ class FormatPreviewDialog(QDialog):
     # ---------- 填数据 ----------
     def _populate_tables(self, formats: list[dict[str, Any]]) -> None:
         videos = [f for f in formats if (f.get("vcodec") or "") != "none"]
-        audios = [f for f in formats if (f.get("acodec") or "") != "none" and (f.get("vcodec") or "") == "none"]
+        audios = [
+            f
+            for f in formats
+            if (f.get("acodec") or "") != "none" and (f.get("vcodec") or "") == "none"
+        ]
 
         # 视频表：按 height 降序 + is_dovi 标记
         videos.sort(key=lambda f: int(str(f.get("height") or 0)), reverse=True)
@@ -224,7 +231,9 @@ class FormatPreviewDialog(QDialog):
             elif hdr:
                 codec = (codec or "") + f" (HDR {dyn.upper()})"
             size = f.get("filesize") or f.get("filesize_approx")
-            table.setItem(row, 0, QTableWidgetItem(str(f.get("format_id", "")) + ("  ★杜比" if dovi else "")))
+            table.setItem(
+                row, 0, QTableWidgetItem(str(f.get("format_id", "")) + ("  ★杜比" if dovi else ""))
+            )
             table.setItem(row, 1, QTableWidgetItem(str(res)))
             table.setItem(row, 2, QTableWidgetItem(f"{fps:g}fps" if fps else "—"))
             table.setItem(row, 3, QTableWidgetItem(str(codec or "")))
@@ -267,6 +276,7 @@ class FormatPreviewDialog(QDialog):
 
     def get_human_label(self) -> str:
         """给用户看的人类可读标签，例如 'DoVi 3840x2160 HEVC / AAC 192kbps'"""
+
         def _find(fid: Optional[str]) -> Optional[dict]:
             if not fid:
                 return None
@@ -380,9 +390,7 @@ class AddTaskDialog(QDialog):
         options_layout.addWidget(self.cookie_browser_combo, 2, 3)
 
         # 提示：选了浏览器时显示简要说明
-        tip_label = QLabel(
-            "选浏览器 → 自动从本机 cookies 库读登录态；不导入 → 匿名抓取"
-        )
+        tip_label = QLabel("选浏览器 → 自动从本机 cookies 库读登录态；不导入 → 匿名抓取")
         tip_label.setStyleSheet("color: #AAA; font-size: 11px;")
         options_layout.addWidget(tip_label, 3, 0, 1, 4)
         options_group.setLayout(options_layout)

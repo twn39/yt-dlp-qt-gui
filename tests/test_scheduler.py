@@ -135,6 +135,20 @@ def test_task_impersonate_and_no_cookies_db(temp_db):
     assert retrieved.no_cookies is True
 
 
+def test_task_cookie_browser_db(temp_db):
+    """测试任务的从浏览器导入 Cookies 属性在数据库中的持久化"""
+    task = DownloadTask(
+        url="https://example.com/v2",
+        save_path=".",
+        format_preset="best",
+        cookie_browser="chrome",
+    )
+    tid = temp_db.add_task(task)
+    retrieved = temp_db.get_task(tid)
+    assert retrieved is not None
+    assert retrieved.cookie_browser == "chrome"
+
+
 def test_database_concurrent_writes(tmp_path):
     """验证 Database 在高频多线程并发写入时依然稳定、不报 SQLite 锁死错误"""
     import threading

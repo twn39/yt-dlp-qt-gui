@@ -20,7 +20,6 @@ import shutil
 import subprocess
 import sys
 
-
 # ============================================================
 # 路径与环境变量（必须在导入任何 PyInstaller 相关模块前设置）
 # ============================================================
@@ -39,6 +38,7 @@ os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
 # ============================================================
 # 虚拟环境自动切换
 # ============================================================
+
 
 def _is_in_venv() -> bool:
     """判断当前解释器是否运行在某个虚拟环境中（venv / .venv）"""
@@ -112,7 +112,8 @@ def ensure_dependencies() -> None:
         print("未找到 uv，使用 pip 安装构建依赖...")
         print("（推荐安装 uv: https://docs.astral.sh/uv/ ，依赖解析更快）")
         pip_packages = [
-            "-e", ".",
+            "-e",
+            ".",
             "pyinstaller>=6.19.0",
             "pillow>=12.1.1",
         ]
@@ -128,6 +129,7 @@ def ensure_dependencies() -> None:
 # ============================================================
 # 构建辅助
 # ============================================================
+
 
 def clean_build_dirs():
     """清理之前的构建目录"""
@@ -151,7 +153,6 @@ def optimize_app_size(app_path: str) -> None:
     qt_lib_dir = os.path.join(frameworks_dir, "PySide6", "Qt", "lib")
     qt_plugins_dir = os.path.join(frameworks_dir, "PySide6", "Qt", "plugins")
     resources_dir = os.path.join(app_path, "Contents", "Resources")
-    qtawesome_fonts_dir = os.path.join(resources_dir, "qtawesome", "fonts")
 
     removed_bytes = 0
 
@@ -288,6 +289,7 @@ def get_dir_size_mb(path: str) -> float:
 # ============================================================
 # 主流程
 # ============================================================
+
 
 def build():
     # 自动切换到项目 .venv（若系统 Python 直接调用且 .venv 存在）

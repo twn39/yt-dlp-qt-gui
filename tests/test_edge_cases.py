@@ -31,6 +31,7 @@ def test_download_task_from_dict_edge_cases():
         "download_playlist": 0,  # SQLite 0 integer coercion to bool
         "playlist_items": "",
         "no_cookies": 1,
+        "cookie_browser": "edge",
     }
 
     task = DownloadTask.from_dict(raw_data)
@@ -46,6 +47,7 @@ def test_download_task_from_dict_edge_cases():
     assert task.download_playlist is False
     assert task.playlist_items is None
     assert task.no_cookies is True
+    assert task.cookie_browser == "edge"
 
 
 # ==========================================
