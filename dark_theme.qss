@@ -229,3 +229,9 @@ QComboBox QAbstractItemView::item:selected {
     background-color: #4A90E2;
     color: #FFFFFF;
 }
+
+/* 兼容 ComboBox 顶层弹窗容器，防止在平台/系统浅色模式下暴露系统背景 */
+QComboBoxPrivateContainer {
+    background-color: #1E1E1E;
+}
+

@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QListView,
     QMessageBox,
     QPlainTextEdit,
     QProgressBar,
@@ -358,6 +359,7 @@ class AddTaskDialog(QDialog):
         options_layout = QGridLayout()
 
         self.format_combo = QComboBox()
+        self.format_combo.setView(QListView())
         # 初始只放 preset 选项，解析后如果用户选了具体 format_id 会在头部插入"已选具体格式"项
         self._format_preset_items = list(FORMAT_PRESETS.keys())
         self.format_combo.addItems(self._format_preset_items)
@@ -376,6 +378,7 @@ class AddTaskDialog(QDialog):
         options_layout.addWidget(self.concurrent_input, 1, 1)
 
         self.impersonate_combo = QComboBox()
+        self.impersonate_combo.setView(QListView())
         self.impersonate_combo.addItems(["无", "chrome", "firefox", "edge", "safari"])
         options_layout.addWidget(QLabel("浏览器伪装:"), 1, 2)
         options_layout.addWidget(self.impersonate_combo, 1, 3)
@@ -387,6 +390,7 @@ class AddTaskDialog(QDialog):
 
         # 浏览器 Cookies：从本机 Chrome / Edge 导入（Safari 暂不支持）
         self.cookie_browser_combo = QComboBox()
+        self.cookie_browser_combo.setView(QListView())
         self.cookie_browser_combo.addItems(["不导入", "Chrome", "Edge"])
         options_layout.addWidget(QLabel("导入 Cookies:"), 2, 2)
         options_layout.addWidget(self.cookie_browser_combo, 2, 3)
@@ -618,11 +622,11 @@ class AboutDialog(QDialog):
         layout.setSpacing(10)
         layout.setContentsMargins(32, 24, 32, 20)
 
-        # 应用图标 —— 固定容器尺寸避免被布局裁剪
+        # 应用图标 —— scale_factor 避免字形左右边界被裁剪
         icon_container = QLabel()
         icon_container.setFixedSize(64, 64)
         icon_container.setPixmap(
-            qta.icon("fa5s.cloud-download-alt", color="#4A90E2").pixmap(48, 48)
+            qta.icon("fa5s.cloud-download-alt", color="#FFFFFF", scale_factor=0.85).pixmap(56, 56)
         )
         icon_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(icon_container, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -666,14 +670,14 @@ class AboutDialog(QDialog):
 
         layout.addSpacing(4)
 
-        # GitHub 链接按钮 —— 继承主题 QPushButton 样式，仅覆盖文字颜色
+        # GitHub 链接按钮 —— 白色图标与白色文字
         github_btn = QPushButton(
-            qta.icon("fa5b.github", color="#4A90E2"),
+            qta.icon("fa5b.github", color="#FFFFFF"),
             f"  {GITHUB_URL.removeprefix('https://')}",
         )
         github_btn.setStyleSheet(
-            "QPushButton { color: #4A90E2; font-size: 9pt; }"
-            "QPushButton:hover { color: #6AAFE8; border-color: #4A90E2; }"
+            "QPushButton { color: #FFFFFF; font-size: 9pt; }"
+            "QPushButton:hover { color: #E0E0E0; border-color: #555555; }"
         )
         github_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         github_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_URL)))

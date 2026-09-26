@@ -361,7 +361,11 @@ class MainWindow(QMainWindow):
     def _apply_dark_theme(self):
         qss = load_stylesheet()
         if qss:
-            self.setStyleSheet(qss)
+            app = QApplication.instance()
+            if isinstance(app, QApplication):
+                app.setStyleSheet(qss)
+            else:
+                self.setStyleSheet(qss)
 
     def _show_about_dialog(self) -> None:
         """显示「关于」对话框"""
@@ -682,6 +686,9 @@ class MainWindow(QMainWindow):
 def run_gui():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    qss = load_stylesheet()
+    if qss:
+        app.setStyleSheet(qss)
     db = Database()
     scheduler = DownloadScheduler(db)
 
